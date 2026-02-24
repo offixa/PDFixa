@@ -1,0 +1,187 @@
+package io.offixa.pdfixa.core.document;
+
+import io.offixa.pdfixa.core.writer.PdfWriter;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * High-level facade for building a PDF document.
+ *
+ * <p>Hides all low-level object wiring (Catalog, Pages, Page, Contents) and
+ * exposes a simple two-method API:
+ * <pre>
+ *   PdfDocument doc = new PdfDocument();
+ *   PdfPage page = doc.addPage();
+ *   page.getContent().beginText() ...
+ *   doc.save(outputStream);
+ * </pre>
+ *
+ * <p>Object numbers are allocated eagerly in {@link #PdfDocument()} and
+ * {@link #addPage()}; no PDF bytes are written until {@link #save} is called.
+ *
+ * <p>This class is not thread-safe.
+ */
+public final class PdfDocument {
+
+    private static final byte[] HEADER_LINE1 =
+            "%PDF-1.7\n".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] HEADER_LINE2 =
+            new byte[]{'%', (byte) 0xE2, (byte) 0xE3, (byte) 0xCF, (byte) 0xD3, '\n'};
+
+    private final ObjectRegistry registry;
+    private final int catalogNum;
+    private final int pagesNum;
+    private final List<PdfPage> pages = new ArrayList<>();
+
+    /**
+     * Creates a new, empty document.
+     * Allocates the Catalog and Pages objects in the internal registry
+     * but does not write any bytes.
+     */
+    public PdfDocument() {
+        registry   = new ObjectRegistry();
+        catalogNum = registry.allocate(); // always 1
+        pagesNum   = registry.allocate(); // always 2
+    }
+
+    /**
+     * Adds a new blank page to the document and returns a {@link PdfPage}
+     * whose {@link PdfPage#getContent()} can be used to append drawing operators.
+     *
+     * <p>Pages appear in the PDF in the order they were added.
+     *
+     * @return the newly created page wrapper
+     */
+    public PdfPage addPage() {
+        int pageNum     = registry.allocate();
+        int contentsNum = registry.allocate();
+        PdfPage page    = new PdfPage(pageNum, contentsNum);
+        pages.add(page);
+        return page;
+    }
+
+    /**
+     * Serializes the complete document to {@code out}.
+     *
+     * <p>The stream is not closed by this method; the caller is responsible
+     * for closing {@code out}.
+     *
+     * @param out destination stream
+     * @throws IOException              if an I/O error occurs
+     * @throws IllegalStateException    if no pages were added
+     */
+    public void save(OutputStream out) throws IOException {
+        Objects.requireNonNull(out, "out");
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("document has no pages");
+        }
+
+        try (PdfWriter writer = new PdfWriter(out)) {
+            writer.writeBytes(HEADER_LINE1);
+            writer.writeBytes(HEADER_LINE2);
+
+            wireBodies();
+
+            registry.writeAll(writer);
+
+            long startxref = XrefTableBuilder.write(
+                    writer, registry.getOffsets(), registry.getObjectCount());
+
+            TrailerBuilder.write(
+                    writer,
+                    registry.getObjectCount() + 1,
+                    registry.getRootObjectNumber(),
+                    startxref);
+
+            writer.flush();
+        }
+    }
+
+    // ── Private wiring ────────────────────────────────────────────────────
+
+    private void wireBodies() {
+        wireCatalog();
+        wirePages();
+        for (PdfPage page : pages) {
+            wirePage(page);
+            wireContents(page);
+        }
+        registry.setRoot(catalogNum);
+    }
+
+    private void wireCatalog() {
+        registry.setBody(catalogNum, w -> {
+            w.beginDictionary();
+            w.writeName("Type");  w.writeSpace(); w.writeName("Catalog");
+            w.writeSpace();
+            w.writeName("Pages"); w.writeSpace(); w.writeReference(pagesNum, 0);
+            w.endDictionary();
+        });
+    }
+
+    private void wirePages() {
+        registry.setBody(pagesNum, w -> {
+            w.beginDictionary();
+            w.writeName("Type"); w.writeSpace(); w.writeName("Pages");
+            w.writeSpace();
+            w.writeName("Kids"); w.writeSpace();
+            w.beginArray();
+            for (int i = 0; i < pages.size(); i++) {
+                if (i > 0) w.writeSpace();
+                w.writeReference(pages.get(i).getPageObjNum(), 0);
+            }
+            w.endArray();
+            w.writeSpace();
+            w.writeName("Count"); w.writeSpace(); w.writeInt(pages.size());
+            w.endDictionary();
+        });
+    }
+
+    private void wirePage(PdfPage page) {
+        int pageNum     = page.getPageObjNum();
+        int contentsNum = page.getContentsObjNum();
+
+        registry.setBody(pageNum, w -> {
+            w.beginDictionary();
+            w.writeName("Type");     w.writeSpace(); w.writeName("Page");
+            w.writeSpace();
+            w.writeName("Parent");   w.writeSpace(); w.writeReference(pagesNum, 0);
+            w.writeSpace();
+            w.writeName("MediaBox"); w.writeSpace();
+            w.beginArray();
+            w.writeInt(0);   w.writeSpace();
+            w.writeInt(0);   w.writeSpace();
+            w.writeInt(595); w.writeSpace();
+            w.writeInt(842);
+            w.endArray();
+            w.writeSpace();
+            w.writeName("Resources"); w.writeSpace();
+            w.beginDictionary();
+            w.writeName("Font"); w.writeSpace();
+            w.beginDictionary();
+            w.writeName("F1"); w.writeSpace();
+            w.beginDictionary();
+            w.writeName("Type");     w.writeSpace(); w.writeName("Font");
+            w.writeSpace();
+            w.writeName("Subtype");  w.writeSpace(); w.writeName("Type1");
+            w.writeSpace();
+            w.writeName("BaseFont"); w.writeSpace(); w.writeName("Helvetica");
+            w.endDictionary();
+            w.endDictionary();
+            w.endDictionary();
+            w.writeSpace();
+            w.writeName("Contents"); w.writeSpace(); w.writeReference(contentsNum, 0);
+            w.endDictionary();
+        });
+    }
+
+    private void wireContents(PdfPage page) {
+        byte[] streamBytes = page.getContent().toBytes();
+        registry.setBody(page.getContentsObjNum(), w -> w.writeStream(streamBytes));
+    }
+}
