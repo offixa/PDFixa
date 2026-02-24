@@ -5,11 +5,12 @@ import io.offixa.pdfixa.core.document.TrailerBuilder;
 import io.offixa.pdfixa.core.document.XrefTableBuilder;
 import io.offixa.pdfixa.core.writer.PdfWriter;
 
-import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Minimal end-to-end demo: writes a one-page PDF with visible text to {@code output.pdf}.
+ * Test-only helper that replicates the Main document layout and returns the
+ * generated PDF as a {@code byte[]}.
  *
  * <p>Object layout:
  * <pre>
@@ -21,24 +22,33 @@ import java.nio.charset.StandardCharsets;
  *   4  Contents stream (BT … ET)
  * </pre>
  */
-public final class Main {
+public final class PdfGenerator {
 
-    private static final byte[] CONTENT_STREAM_BYTES =
+    /** Number of real (non-free) PDF objects written by {@link #generate()}. */
+    public static final int OBJECT_COUNT = 4;
+
+    /** Object number of the document catalog (/Root). */
+    public static final int ROOT_OBJECT_NUM = 1;
+
+    /** Raw US-ASCII bytes of the content stream (no compression). */
+    public static final byte[] CONTENT_STREAM_BYTES =
             "BT\n/F1 12 Tf\n100 700 Td\n(Hello PDFixa) Tj\nET"
                     .getBytes(StandardCharsets.US_ASCII);
 
-    public static void main(String[] args) throws Exception {
-        try (FileOutputStream fos = new FileOutputStream("output.pdf");
-             PdfWriter writer = new PdfWriter(fos)) {
+    private PdfGenerator() {}
 
-            // ── Header ────────────────────────────────────────────────
+    /**
+     * Generates a minimal but structurally complete PDF 1.7 document and
+     * returns it as a byte array. Produces deterministic output on every call.
+     */
+    public static byte[] generate() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (PdfWriter writer = new PdfWriter(baos)) {
+
             writer.writeBytes("%PDF-1.7\n".getBytes(StandardCharsets.US_ASCII));
-            // Binary comment signals to transfer agents that this is a binary file.
             writer.writeBytes(new byte[]{'%', (byte) 0xE2, (byte) 0xE3, (byte) 0xCF, (byte) 0xD3, '\n'});
 
-            // ── Object allocation ─────────────────────────────────────
             ObjectRegistry registry = new ObjectRegistry();
-
             int catalogNum  = registry.allocate(); // 1
             int pagesNum    = registry.allocate(); // 2
             int pageNum     = registry.allocate(); // 3
@@ -99,8 +109,6 @@ public final class Main {
             registry.setBody(contentsNum, w -> w.writeStream(CONTENT_STREAM_BYTES));
 
             registry.setRoot(catalogNum);
-
-            // ── Serialization ─────────────────────────────────────────
             registry.writeAll(writer);
 
             long startxref = XrefTableBuilder.write(
@@ -114,7 +122,6 @@ public final class Main {
 
             writer.flush();
         }
-
-        System.out.println("output.pdf written successfully.");
+        return baos.toByteArray();
     }
 }

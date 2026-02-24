@@ -34,6 +34,9 @@ public final class PdfWriter implements Closeable {
     private static final byte[] OBJ_INTRO = " obj\n".getBytes(StandardCharsets.US_ASCII);
     private static final byte[] OBJ_OUTRO = "endobj\n".getBytes(StandardCharsets.US_ASCII);
 
+    private static final byte[] STREAM_BEGIN = "stream\n".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] STREAM_END   = "\nendstream".getBytes(StandardCharsets.US_ASCII);
+
     private static final byte[] DICT_OPEN = "<<".getBytes(StandardCharsets.US_ASCII);
     private static final byte[] DICT_CLOSE = ">>".getBytes(StandardCharsets.US_ASCII);
 
@@ -199,6 +202,40 @@ public final class PdfWriter implements Closeable {
         out.write(' ');
         writeAscii(Integer.toString(gen));
         out.write(REF_SUFFIX);
+    }
+
+    // ── Stream objects ─────────────────────────────────────────────────
+
+    /**
+     * Writes a PDF stream body (no compression, Phase 1).
+     *
+     * <p>Produces exactly:
+     * <pre>
+     * &lt;&lt; /Length N &gt;&gt;\n
+     * stream\n
+     * &lt;raw bytes&gt;\n
+     * endstream
+     * </pre>
+     * where {@code N} is {@code data.length} — the raw byte count only,
+     * not including any surrounding newlines.
+     *
+     * <p>This method is intended to be used as a {@link PdfSerializable} body
+     * inside an indirect object; the surrounding {@code obj}/{@code endobj}
+     * wrappers are managed by {@link io.offixa.pdfixa.core.document.ObjectRegistry}.
+     */
+    public void writeStream(byte[] data) throws IOException {
+        Objects.requireNonNull(data, "data");
+        out.write(DICT_OPEN);
+        out.write(SPACE);
+        writeName("Length");
+        out.write(SPACE);
+        writeInt(data.length);
+        out.write(SPACE);
+        out.write(DICT_CLOSE);
+        out.write(NEWLINE);
+        out.write(STREAM_BEGIN);
+        out.write(data);
+        out.write(STREAM_END);
     }
 
     // ── Indirect object wrappers ───────────────────────────────────────
