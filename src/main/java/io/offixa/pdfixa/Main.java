@@ -16,7 +16,7 @@ public final class Main {
         PdfPage page = doc.addPage();
         page.getContent()
                 .beginText()
-                .setFont("F1", 12)
+                .setFont("Helvetica", 12)
                 .moveText(100, 700)
                 .showText("Hello from facade")
                 .endText();

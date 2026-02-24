@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.zip.Deflater;
 
 /**
@@ -37,6 +38,7 @@ public final class PdfDocument {
 
     private final ObjectRegistry registry;
     private final FontRegistry fontRegistry;
+    private final ImageRegistry imageRegistry;
     private final int catalogNum;
     private final int pagesNum;
     private final List<PdfPage> pages = new ArrayList<>();
@@ -47,10 +49,11 @@ public final class PdfDocument {
      * but does not write any bytes.
      */
     public PdfDocument() {
-        registry     = new ObjectRegistry();
-        fontRegistry = new FontRegistry();
-        catalogNum   = registry.allocate(); // always 1
-        pagesNum     = registry.allocate(); // always 2
+        registry      = new ObjectRegistry();
+        fontRegistry  = new FontRegistry();
+        imageRegistry = new ImageRegistry();
+        catalogNum    = registry.allocate(); // always 1
+        pagesNum      = registry.allocate(); // always 2
     }
 
     /**
@@ -67,6 +70,33 @@ public final class PdfDocument {
         PdfPage page    = new PdfPage(pageNum, contentsNum, fontRegistry);
         pages.add(page);
         return page;
+    }
+
+    /**
+     * Embeds a JPEG image in the document and returns a {@link PdfImage} handle
+     * that can be passed to {@link PdfPage#drawImage} on any page.
+     *
+     * <p>The JPEG bytes are stored as-is using {@code /Filter /DCTDecode} — no
+     * transcoding or pixel decoding is performed.  A defensive copy of
+     * {@code jpegBytes} is taken to guarantee deterministic output.
+     *
+     * @param jpegBytes raw JPEG file bytes; must not be {@code null}
+     * @param width     image width in pixels (must be &gt; 0)
+     * @param height    image height in pixels (must be &gt; 0)
+     * @return a handle for placing the image on pages
+     */
+    public PdfImage addJpegImage(byte[] jpegBytes, int width, int height) {
+        Objects.requireNonNull(jpegBytes, "jpegBytes");
+        if (width  <= 0) throw new IllegalArgumentException("width must be > 0");
+        if (height <= 0) throw new IllegalArgumentException("height must be > 0");
+
+        int imageObjNum = registry.allocate();
+        PdfImage img    = imageRegistry.allocate(imageObjNum, width, height);
+
+        byte[] imageData = jpegBytes.clone(); // defensive copy for determinism
+        registry.setBody(imageObjNum,
+                w -> w.writeJpegImageStream(imageData, width, height));
+        return img;
     }
 
     /**
@@ -149,8 +179,9 @@ public final class PdfDocument {
     private void wirePage(PdfPage page) {
         int pageNum     = page.getPageObjNum();
         int contentsNum = page.getContentsObjNum();
-        // Snapshot the used-alias set now; by save() time the content is finalized.
-        java.util.Set<String> usedAliases = page.getUsedFontAliases();
+        // Snapshot resource sets now; by save() time content is finalised.
+        Set<String>   usedFonts  = page.getUsedFontAliases();
+        Set<PdfImage> usedImages = page.getUsedImages();
 
         registry.setBody(pageNum, w -> {
             w.beginDictionary();
@@ -165,27 +196,42 @@ public final class PdfDocument {
             w.writeInt(595); w.writeSpace();
             w.writeInt(842);
             w.endArray();
-            if (!usedAliases.isEmpty()) {
+            if (!usedFonts.isEmpty() || !usedImages.isEmpty()) {
                 w.writeSpace();
                 w.writeName("Resources"); w.writeSpace();
                 w.beginDictionary();
-                w.writeName("Font"); w.writeSpace();
-                w.beginDictionary();
-                boolean firstFont = true;
-                for (String alias : usedAliases) {
-                    if (!firstFont) w.writeSpace();
-                    firstFont = false;
-                    String baseFontName = fontRegistry.getFontName(alias);
-                    w.writeName(alias); w.writeSpace();
+                if (!usedFonts.isEmpty()) {
+                    w.writeName("Font"); w.writeSpace();
                     w.beginDictionary();
-                    w.writeName("Type");     w.writeSpace(); w.writeName("Font");
-                    w.writeSpace();
-                    w.writeName("Subtype");  w.writeSpace(); w.writeName("Type1");
-                    w.writeSpace();
-                    w.writeName("BaseFont"); w.writeSpace(); w.writeName(baseFontName);
+                    boolean firstFont = true;
+                    for (String alias : usedFonts) {
+                        if (!firstFont) w.writeSpace();
+                        firstFont = false;
+                        String baseFontName = fontRegistry.getFontName(alias);
+                        w.writeName(alias); w.writeSpace();
+                        w.beginDictionary();
+                        w.writeName("Type");     w.writeSpace(); w.writeName("Font");
+                        w.writeSpace();
+                        w.writeName("Subtype");  w.writeSpace(); w.writeName("Type1");
+                        w.writeSpace();
+                        w.writeName("BaseFont"); w.writeSpace(); w.writeName(baseFontName);
+                        w.endDictionary();
+                    }
                     w.endDictionary();
                 }
-                w.endDictionary();
+                if (!usedImages.isEmpty()) {
+                    if (!usedFonts.isEmpty()) w.writeSpace();
+                    w.writeName("XObject"); w.writeSpace();
+                    w.beginDictionary();
+                    boolean firstImage = true;
+                    for (PdfImage img : usedImages) {
+                        if (!firstImage) w.writeSpace();
+                        firstImage = false;
+                        w.writeName(img.getAlias()); w.writeSpace();
+                        w.writeReference(img.getObjectNumber(), 0);
+                    }
+                    w.endDictionary();
+                }
                 w.endDictionary();
             }
             w.writeSpace();

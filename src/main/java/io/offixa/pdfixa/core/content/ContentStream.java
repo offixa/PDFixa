@@ -214,6 +214,48 @@ public final class ContentStream {
         return this;
     }
 
+    // ── Graphics state operators ────────────────────────────────────────────
+
+    /** Appends {@code q\n} — save the current graphics state. */
+    public ContentStream saveState() {
+        buf.append("q\n");
+        return this;
+    }
+
+    /** Appends {@code Q\n} — restore the most recently saved graphics state. */
+    public ContentStream restoreState() {
+        buf.append("Q\n");
+        return this;
+    }
+
+    /**
+     * Appends {@code <a> <b> <c> <d> <e> <f> cm\n} — concatenate transformation matrix.
+     *
+     * <p>To place an image at ({@code x}, {@code y}) with dimensions
+     * {@code w}×{@code h}, call {@code concatMatrix(w, 0, 0, h, x, y)}.
+     */
+    public ContentStream concatMatrix(double a, double b, double c,
+                                      double d, double e, double f) {
+        buf.append(PdfWriter.formatReal(a))
+           .append(' ').append(PdfWriter.formatReal(b))
+           .append(' ').append(PdfWriter.formatReal(c))
+           .append(' ').append(PdfWriter.formatReal(d))
+           .append(' ').append(PdfWriter.formatReal(e))
+           .append(' ').append(PdfWriter.formatReal(f))
+           .append(" cm\n");
+        return this;
+    }
+
+    /**
+     * Appends {@code /<name> Do\n} — invoke a named XObject (e.g. an image).
+     *
+     * @param name XObject resource name without the leading slash, e.g. {@code "Im1"}
+     */
+    public ContentStream doXObject(String name) {
+        buf.append('/').append(name).append(" Do\n");
+        return this;
+    }
+
     // ── Output ─────────────────────────────────────────────────────────────
 
     /**

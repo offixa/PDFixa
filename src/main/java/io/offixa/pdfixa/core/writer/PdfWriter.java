@@ -239,6 +239,52 @@ public final class PdfWriter implements Closeable {
     }
 
     /**
+     * Writes a JPEG image XObject stream body.
+     *
+     * <p>Produces exactly:
+     * <pre>
+     * &lt;&lt; /Type /XObject /Subtype /Image /Width W /Height H
+     *    /ColorSpace /DeviceRGB /BitsPerComponent 8
+     *    /Filter /DCTDecode /Length N &gt;&gt;\n
+     * stream\n
+     * &lt;raw JPEG bytes&gt;\n
+     * endstream
+     * </pre>
+     * where {@code N} is {@code jpegBytes.length}. The JPEG bytes are written
+     * verbatim — no additional compression is applied.
+     *
+     * @param jpegBytes raw JPEG file bytes (DCT-encoded)
+     * @param width     image width in pixels
+     * @param height    image height in pixels
+     */
+    public void writeJpegImageStream(byte[] jpegBytes, int width, int height) throws IOException {
+        Objects.requireNonNull(jpegBytes, "jpegBytes");
+        out.write(DICT_OPEN);
+        out.write(SPACE);
+        writeName("Type");             out.write(SPACE); writeName("XObject");
+        out.write(SPACE);
+        writeName("Subtype");          out.write(SPACE); writeName("Image");
+        out.write(SPACE);
+        writeName("Width");            out.write(SPACE); writeInt(width);
+        out.write(SPACE);
+        writeName("Height");           out.write(SPACE); writeInt(height);
+        out.write(SPACE);
+        writeName("ColorSpace");       out.write(SPACE); writeName("DeviceRGB");
+        out.write(SPACE);
+        writeName("BitsPerComponent"); out.write(SPACE); writeInt(8);
+        out.write(SPACE);
+        writeName("Filter");           out.write(SPACE); writeName("DCTDecode");
+        out.write(SPACE);
+        writeName("Length");           out.write(SPACE); writeInt(jpegBytes.length);
+        out.write(SPACE);
+        out.write(DICT_CLOSE);
+        out.write(NEWLINE);
+        out.write(STREAM_BEGIN);
+        out.write(jpegBytes);
+        out.write(STREAM_END);
+    }
+
+    /**
      * Writes a Flate-compressed PDF stream body.
      *
      * <p>Produces exactly:
