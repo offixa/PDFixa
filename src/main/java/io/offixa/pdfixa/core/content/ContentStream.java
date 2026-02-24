@@ -1,8 +1,13 @@
 package io.offixa.pdfixa.core.content;
 
+import io.offixa.pdfixa.core.document.FontRegistry;
 import io.offixa.pdfixa.core.writer.PdfWriter;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Minimal, safe builder for PDF content stream operators.
@@ -20,6 +25,47 @@ public final class ContentStream {
 
     private final StringBuilder buf = new StringBuilder();
 
+    /**
+     * Optional document-level font registry.  When set, {@link #setFont} resolves
+     * font names to their aliases and tracks which aliases this stream uses.
+     * When {@code null} the raw name is written verbatim (standalone / test use).
+     */
+    private final FontRegistry fontRegistry;
+
+    /** Ordered set of font aliases used by this stream (populated only with a registry). */
+    private final Set<String> usedAliases = new LinkedHashSet<>();
+
+    // ── Constructors ───────────────────────────────────────────────────────
+
+    /**
+     * Creates a standalone stream with no font registry.
+     * {@link #setFont} writes the supplied name verbatim.
+     * Suitable for isolated unit tests and low-level usage.
+     */
+    public ContentStream() {
+        this.fontRegistry = null;
+    }
+
+    /**
+     * Creates a stream wired to {@code fontRegistry}.
+     * {@link #setFont} will resolve font names to aliases and track usage.
+     * Called by {@link io.offixa.pdfixa.core.document.PdfPage}.
+     *
+     * @param fontRegistry the document-level registry; must not be {@code null}
+     */
+    public ContentStream(FontRegistry fontRegistry) {
+        this.fontRegistry = Objects.requireNonNull(fontRegistry, "fontRegistry");
+    }
+
+    /**
+     * Returns an unmodifiable, insertion-ordered view of all font aliases
+     * referenced by {@link #setFont} calls on this stream.
+     * Empty when no registry is attached.
+     */
+    public Set<String> getUsedFontAliases() {
+        return Collections.unmodifiableSet(usedAliases);
+    }
+
     // ── Text operators ─────────────────────────────────────────────────────
 
     /** Appends {@code BT\n} — begin text object. */
@@ -35,13 +81,28 @@ public final class ContentStream {
     }
 
     /**
-     * Appends {@code /<name> <size> Tf\n} — set font and size.
+     * Appends a {@code Tf} operator for the given font name and size.
      *
-     * @param name font resource name (without leading slash)
+     * <p>Behaviour depends on whether a {@link FontRegistry} has been attached:
+     * <ul>
+     *   <li><b>With registry:</b> resolves {@code name} to its alias (e.g. {@code F1}),
+     *       records the alias in the used-set, and writes {@code /F1 <size> Tf\n}.
+     *   <li><b>Without registry:</b> writes {@code /<name> <size> Tf\n} verbatim —
+     *       preserving backward-compatible behaviour for standalone / test use.
+     * </ul>
+     *
+     * @param name font name (Base-14) or alias when registry is absent
      * @param size point size
      */
     public ContentStream setFont(String name, double size) {
-        buf.append('/').append(name)
+        String token;
+        if (fontRegistry != null) {
+            token = fontRegistry.getAlias(name);
+            usedAliases.add(token);
+        } else {
+            token = name;
+        }
+        buf.append('/').append(token)
            .append(' ').append(PdfWriter.formatReal(size))
            .append(" Tf\n");
         return this;

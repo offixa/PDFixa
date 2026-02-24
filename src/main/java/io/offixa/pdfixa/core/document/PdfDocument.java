@@ -2,12 +2,14 @@ package io.offixa.pdfixa.core.document;
 
 import io.offixa.pdfixa.core.writer.PdfWriter;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.zip.Deflater;
 
 /**
  * High-level facade for building a PDF document.
@@ -34,6 +36,7 @@ public final class PdfDocument {
             new byte[]{'%', (byte) 0xE2, (byte) 0xE3, (byte) 0xCF, (byte) 0xD3, '\n'};
 
     private final ObjectRegistry registry;
+    private final FontRegistry fontRegistry;
     private final int catalogNum;
     private final int pagesNum;
     private final List<PdfPage> pages = new ArrayList<>();
@@ -44,9 +47,10 @@ public final class PdfDocument {
      * but does not write any bytes.
      */
     public PdfDocument() {
-        registry   = new ObjectRegistry();
-        catalogNum = registry.allocate(); // always 1
-        pagesNum   = registry.allocate(); // always 2
+        registry     = new ObjectRegistry();
+        fontRegistry = new FontRegistry();
+        catalogNum   = registry.allocate(); // always 1
+        pagesNum     = registry.allocate(); // always 2
     }
 
     /**
@@ -60,7 +64,7 @@ public final class PdfDocument {
     public PdfPage addPage() {
         int pageNum     = registry.allocate();
         int contentsNum = registry.allocate();
-        PdfPage page    = new PdfPage(pageNum, contentsNum);
+        PdfPage page    = new PdfPage(pageNum, contentsNum, fontRegistry);
         pages.add(page);
         return page;
     }
@@ -145,6 +149,8 @@ public final class PdfDocument {
     private void wirePage(PdfPage page) {
         int pageNum     = page.getPageObjNum();
         int contentsNum = page.getContentsObjNum();
+        // Snapshot the used-alias set now; by save() time the content is finalized.
+        java.util.Set<String> usedAliases = page.getUsedFontAliases();
 
         registry.setBody(pageNum, w -> {
             w.beginDictionary();
@@ -159,21 +165,29 @@ public final class PdfDocument {
             w.writeInt(595); w.writeSpace();
             w.writeInt(842);
             w.endArray();
-            w.writeSpace();
-            w.writeName("Resources"); w.writeSpace();
-            w.beginDictionary();
-            w.writeName("Font"); w.writeSpace();
-            w.beginDictionary();
-            w.writeName("F1"); w.writeSpace();
-            w.beginDictionary();
-            w.writeName("Type");     w.writeSpace(); w.writeName("Font");
-            w.writeSpace();
-            w.writeName("Subtype");  w.writeSpace(); w.writeName("Type1");
-            w.writeSpace();
-            w.writeName("BaseFont"); w.writeSpace(); w.writeName("Helvetica");
-            w.endDictionary();
-            w.endDictionary();
-            w.endDictionary();
+            if (!usedAliases.isEmpty()) {
+                w.writeSpace();
+                w.writeName("Resources"); w.writeSpace();
+                w.beginDictionary();
+                w.writeName("Font"); w.writeSpace();
+                w.beginDictionary();
+                boolean firstFont = true;
+                for (String alias : usedAliases) {
+                    if (!firstFont) w.writeSpace();
+                    firstFont = false;
+                    String baseFontName = fontRegistry.getFontName(alias);
+                    w.writeName(alias); w.writeSpace();
+                    w.beginDictionary();
+                    w.writeName("Type");     w.writeSpace(); w.writeName("Font");
+                    w.writeSpace();
+                    w.writeName("Subtype");  w.writeSpace(); w.writeName("Type1");
+                    w.writeSpace();
+                    w.writeName("BaseFont"); w.writeSpace(); w.writeName(baseFontName);
+                    w.endDictionary();
+                }
+                w.endDictionary();
+                w.endDictionary();
+            }
             w.writeSpace();
             w.writeName("Contents"); w.writeSpace(); w.writeReference(contentsNum, 0);
             w.endDictionary();
@@ -181,7 +195,30 @@ public final class PdfDocument {
     }
 
     private void wireContents(PdfPage page) {
-        byte[] streamBytes = page.getContent().toBytes();
-        registry.setBody(page.getContentsObjNum(), w -> w.writeStream(streamBytes));
+        byte[] raw        = page.getContent().toBytes();
+        byte[] compressed = compress(raw);
+        registry.setBody(page.getContentsObjNum(), w -> w.writeCompressedStream(compressed));
+    }
+
+    /**
+     * Compresses {@code input} using raw zlib (Deflater with {@code nowrap=false}).
+     * Output is deterministic: same input always yields the same compressed bytes.
+     * No timestamps or metadata are embedded.
+     */
+    private static byte[] compress(byte[] input) {
+        Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, false);
+        try {
+            deflater.setInput(input);
+            deflater.finish();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(Math.max(64, input.length));
+            byte[] buf = new byte[4096];
+            while (!deflater.finished()) {
+                int n = deflater.deflate(buf);
+                baos.write(buf, 0, n);
+            }
+            return baos.toByteArray();
+        } finally {
+            deflater.end();
+        }
     }
 }

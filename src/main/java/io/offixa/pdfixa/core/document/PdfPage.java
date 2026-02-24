@@ -2,6 +2,8 @@ package io.offixa.pdfixa.core.document;
 
 import io.offixa.pdfixa.core.content.ContentStream;
 
+import java.util.Set;
+
 /**
  * Represents a single page in a {@link PdfDocument}.
  *
@@ -17,10 +19,10 @@ public final class PdfPage {
     private final int pageObjNum;
     private final int contentsObjNum;
 
-    PdfPage(int pageObjNum, int contentsObjNum) {
+    PdfPage(int pageObjNum, int contentsObjNum, FontRegistry fontRegistry) {
         this.pageObjNum     = pageObjNum;
         this.contentsObjNum = contentsObjNum;
-        this.content        = new ContentStream();
+        this.content        = new ContentStream(fontRegistry);
     }
 
     /**
@@ -38,5 +40,14 @@ public final class PdfPage {
 
     int getContentsObjNum() {
         return contentsObjNum;
+    }
+
+    /**
+     * Returns the ordered set of font aliases actually used by this page's
+     * content stream.  Used by {@link PdfDocument} to build the per-page
+     * {@code /Resources} dictionary at save time.
+     */
+    Set<String> getUsedFontAliases() {
+        return content.getUsedFontAliases();
     }
 }

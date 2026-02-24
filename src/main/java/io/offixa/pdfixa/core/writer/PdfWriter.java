@@ -207,7 +207,7 @@ public final class PdfWriter implements Closeable {
     // ── Stream objects ─────────────────────────────────────────────────
 
     /**
-     * Writes a PDF stream body (no compression, Phase 1).
+     * Writes a PDF stream body (no compression).
      *
      * <p>Produces exactly:
      * <pre>
@@ -235,6 +235,41 @@ public final class PdfWriter implements Closeable {
         out.write(NEWLINE);
         out.write(STREAM_BEGIN);
         out.write(data);
+        out.write(STREAM_END);
+    }
+
+    /**
+     * Writes a Flate-compressed PDF stream body.
+     *
+     * <p>Produces exactly:
+     * <pre>
+     * &lt;&lt; /Length N /Filter /FlateDecode &gt;&gt;\n
+     * stream\n
+     * &lt;compressed bytes&gt;\n
+     * endstream
+     * </pre>
+     * where {@code N} is {@code compressed.length} and the data is raw zlib bytes
+     * (already deflated by the caller — this method does no compression itself).
+     *
+     * <p>Use in conjunction with {@link io.offixa.pdfixa.core.document.PdfDocument}'s
+     * {@code compress()} helper.
+     */
+    public void writeCompressedStream(byte[] compressed) throws IOException {
+        Objects.requireNonNull(compressed, "compressed");
+        out.write(DICT_OPEN);
+        out.write(SPACE);
+        writeName("Length");
+        out.write(SPACE);
+        writeInt(compressed.length);
+        out.write(SPACE);
+        writeName("Filter");
+        out.write(SPACE);
+        writeName("FlateDecode");
+        out.write(SPACE);
+        out.write(DICT_CLOSE);
+        out.write(NEWLINE);
+        out.write(STREAM_BEGIN);
+        out.write(compressed);
         out.write(STREAM_END);
     }
 
