@@ -233,4 +233,64 @@ class PdfStructureTest {
                 "/Length must equal the raw content byte count ("
                         + PdfGenerator.CONTENT_STREAM_BYTES.length + ")");
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Test 7: content stream contains all expected graphics operator sequences
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void contentStream_containsGraphicsOperators() {
+        // Line width setting
+        assertSeqPresent("2 w\n",             "line-width operator '2 w'");
+
+        // Horizontal line: moveto → lineto → stroke
+        assertSeqPresent("50 650 m\n",        "moveto '50 650 m'");
+        assertSeqPresent("300 650 l\n",       "lineto '300 650 l'");
+
+        // Stroke-only rectangle
+        assertSeqPresent("50 500 200 100 re\n", "rect '50 500 200 100 re'");
+
+        // Filled rectangle
+        assertSeqPresent("300 500 100 100 re\n", "rect '300 500 100 100 re'");
+        assertSeqPresent("300 500 100 100 re\nf", "fill operator 'f' after filled rect");
+
+        // The standalone S stroke operators are present after the re sequences
+        int reStrokeIdx = ByteUtil.indexOf(PDF, "50 500 200 100 re\nS".getBytes(ASCII), 0);
+        assertNotEquals(-1, reStrokeIdx,
+                "Stroked rectangle sequence '50 500 200 100 re\\nS' not found in PDF");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Test 8: Pages object declares /Count 2 and /Kids with both page refs
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void pages_object_has_count2_and_both_kids() {
+        byte[] objHeader = "2 0 obj\n".getBytes(ASCII);
+        int objStart = ByteUtil.indexOf(PDF, objHeader, 0);
+        assertNotEquals(-1, objStart, "Pages object (2 0 obj) not found in PDF");
+
+        byte[] endobjMarker = "endobj\n".getBytes(ASCII);
+        int objEnd = ByteUtil.indexOf(PDF, endobjMarker, objStart);
+        assertNotEquals(-1, objEnd, "endobj not found after Pages object");
+
+        int bodyStart = objStart + objHeader.length;
+        byte[] body = new byte[objEnd - bodyStart];
+        System.arraycopy(PDF, bodyStart, body, 0, body.length);
+        String bodyText = new String(body, ASCII);
+
+        assertTrue(bodyText.contains("/Count 2"),
+                "Pages object must contain /Count 2, got: " + bodyText);
+        assertTrue(bodyText.contains("3 0 R"),
+                "Pages /Kids must contain ref to Page1 (3 0 R), got: " + bodyText);
+        assertTrue(bodyText.contains("5 0 R"),
+                "Pages /Kids must contain ref to Page2 (5 0 R), got: " + bodyText);
+    }
+
+    /** Asserts that {@code sequence} (US-ASCII) appears at least once in {@code PDF}. */
+    private static void assertSeqPresent(String sequence, String description) {
+        int idx = ByteUtil.indexOf(PDF, sequence.getBytes(ASCII), 0);
+        assertNotEquals(-1, idx, "Expected graphics sequence not found: " + description
+                + " — sequence: \"" + sequence.replace("\n", "\\n") + "\"");
+    }
 }

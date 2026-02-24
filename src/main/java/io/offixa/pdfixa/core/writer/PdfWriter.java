@@ -330,7 +330,7 @@ public final class PdfWriter implements Closeable {
      * No exponential notation. Trailing fractional zeros are stripped.
      * Integral values omit the decimal point entirely.
      */
-    static String formatReal(double value) {
+    public static String formatReal(double value) {
         long longVal = (long) value;
         if (value == longVal) {
             return Long.toString(longVal);
