@@ -285,6 +285,69 @@ public final class PdfWriter implements Closeable {
     }
 
     /**
+     * Writes a PNG image XObject stream body.
+     *
+     * <p>Produces exactly:
+     * <pre>
+     * &lt;&lt; /Type /XObject /Subtype /Image /Width W /Height H
+     *    /ColorSpace /DeviceRGB /BitsPerComponent 8
+     *    /Filter /FlateDecode
+     *    /DecodeParms &lt;&lt; /Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns W &gt;&gt;
+     *    /Length N &gt;&gt;\n
+     * stream\n
+     * &lt;raw IDAT bytes&gt;\n
+     * endstream
+     * </pre>
+     * where {@code N} is {@code idatData.length}. The IDAT bytes are written verbatim —
+     * they are the raw zlib-compressed payload (with PNG filter bytes preserved) extracted
+     * directly from the PNG file.  The {@code /Predictor 15} entry instructs the PDF reader
+     * to undo PNG row-filtering after inflation.
+     *
+     * @param idatData concatenated, unmodified IDAT chunk bytes from the PNG
+     * @param width    image width in pixels
+     * @param height   image height in pixels
+     */
+    public void writePngImageStream(byte[] idatData, int width, int height) throws IOException {
+        Objects.requireNonNull(idatData, "idatData");
+        out.write(DICT_OPEN);
+        out.write(SPACE);
+        writeName("Type");             out.write(SPACE); writeName("XObject");
+        out.write(SPACE);
+        writeName("Subtype");          out.write(SPACE); writeName("Image");
+        out.write(SPACE);
+        writeName("Width");            out.write(SPACE); writeInt(width);
+        out.write(SPACE);
+        writeName("Height");           out.write(SPACE); writeInt(height);
+        out.write(SPACE);
+        writeName("ColorSpace");       out.write(SPACE); writeName("DeviceRGB");
+        out.write(SPACE);
+        writeName("BitsPerComponent"); out.write(SPACE); writeInt(8);
+        out.write(SPACE);
+        writeName("Filter");           out.write(SPACE); writeName("FlateDecode");
+        out.write(SPACE);
+        writeName("DecodeParms");      out.write(SPACE);
+        out.write(DICT_OPEN);
+        out.write(SPACE);
+        writeName("Predictor");        out.write(SPACE); writeInt(15);
+        out.write(SPACE);
+        writeName("Colors");           out.write(SPACE); writeInt(3);
+        out.write(SPACE);
+        writeName("BitsPerComponent"); out.write(SPACE); writeInt(8);
+        out.write(SPACE);
+        writeName("Columns");          out.write(SPACE); writeInt(width);
+        out.write(SPACE);
+        out.write(DICT_CLOSE);
+        out.write(SPACE);
+        writeName("Length");           out.write(SPACE); writeInt(idatData.length);
+        out.write(SPACE);
+        out.write(DICT_CLOSE);
+        out.write(NEWLINE);
+        out.write(STREAM_BEGIN);
+        out.write(idatData);
+        out.write(STREAM_END);
+    }
+
+    /**
      * Writes a Flate-compressed PDF stream body.
      *
      * <p>Produces exactly:

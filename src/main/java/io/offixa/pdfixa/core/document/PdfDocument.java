@@ -100,6 +100,34 @@ public final class PdfDocument {
     }
 
     /**
+     * Embeds a PNG image in the document and returns a {@link PdfImage} handle
+     * that can be passed to {@link PdfPage#drawImage} on any page.
+     *
+     * <p>Only 8-bit, non-interlaced, truecolor RGB (color type 2) PNGs are accepted.
+     * Alpha channel, indexed-color, grayscale, and interlaced variants all cause
+     * {@link IllegalArgumentException} to be thrown.
+     *
+     * <p>Width and height are extracted automatically from the IHDR chunk.
+     * The raw IDAT payload (zlib-compressed, PNG filter bytes intact) is written
+     * verbatim as the PDF stream body with {@code /Filter /FlateDecode} and
+     * {@code /DecodeParms << /Predictor 15 ... >>}. No re-compression is applied.
+     * A defensive copy of {@code pngBytes} is taken to guarantee deterministic output.
+     *
+     * @param pngBytes raw PNG file bytes; must not be {@code null}
+     * @return a handle for placing the image on pages
+     * @throws IllegalArgumentException if the PNG is not a supported variant
+     */
+    public PdfImage addPngImage(byte[] pngBytes) {
+        Objects.requireNonNull(pngBytes, "pngBytes");
+        PngParser png       = PngParser.parse(pngBytes.clone());
+        int       objNum    = registry.allocate();
+        PdfImage  img       = imageRegistry.allocate(objNum, png.width, png.height);
+        byte[]    idatData  = png.idatData; // already a fresh array from PngParser
+        registry.setBody(objNum, w -> w.writePngImageStream(idatData, png.width, png.height));
+        return img;
+    }
+
+    /**
      * Serializes the complete document to {@code out}.
      *
      * <p>The stream is not closed by this method; the caller is responsible
