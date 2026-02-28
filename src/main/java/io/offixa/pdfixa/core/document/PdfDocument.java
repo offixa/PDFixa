@@ -11,10 +11,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.zip.Deflater;
+import java.security.DigestOutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * High-level facade for building a PDF document.
@@ -39,6 +43,7 @@ public final class PdfDocument {
             "%PDF-1.7\n".getBytes(StandardCharsets.US_ASCII);
     private static final byte[] HEADER_LINE2 =
             new byte[]{'%', (byte) 0xE2, (byte) 0xE3, (byte) 0xCF, (byte) 0xD3, '\n'};
+    private static final String PRODUCER_VALUE = "PDFixa";
 
     private final ObjectRegistry registry;
     private final FontRegistry fontRegistry;
@@ -47,6 +52,7 @@ public final class PdfDocument {
     private final int catalogNum;
     private final int pagesNum;
     private final List<PdfPage> pages = new ArrayList<>();
+    private PdfInfo info;
     private boolean saved;
 
     /**
@@ -146,6 +152,20 @@ public final class PdfDocument {
     }
 
     /**
+     * Sets document metadata to be written into the PDF {@code /Info} dictionary.
+     *
+     * @param info info value object with optional metadata fields
+     * @throws IllegalStateException if the document has already been saved
+     */
+    public void setInfo(PdfInfo info) {
+        Objects.requireNonNull(info, "info");
+        if (saved) {
+            throw new IllegalStateException("document has already been saved");
+        }
+        this.info = info;
+    }
+
+    /**
      * Serializes the complete document to {@code out}.
      *
      * <p>The stream is not closed by this method; the caller is responsible
@@ -166,21 +186,28 @@ public final class PdfDocument {
         }
         saved = true;
 
-        PdfWriter writer = new PdfWriter(out);
+        MessageDigest digest = sha256Digest();
+        DigestOutputStream digestOut = new DigestOutputStream(out, digest);
+        PdfWriter writer = new PdfWriter(digestOut);
         writer.writeBytes(HEADER_LINE1);
         writer.writeBytes(HEADER_LINE2);
 
-        wireBodies();
+        int infoObjNum = wireBodies();
 
         registry.writeAll(writer);
 
         long startxref = XrefTableBuilder.write(
                 writer, registry.getOffsets(), registry.getObjectCount());
 
+        writer.flush();
+        byte[] fileId = Arrays.copyOf(digest.digest(), 16);
+
         TrailerBuilder.write(
                 writer,
                 registry.getObjectCount() + 1,
                 registry.getRootObjectNumber(),
+                infoObjNum,
+                fileId,
                 startxref);
 
         writer.finish();
@@ -188,7 +215,8 @@ public final class PdfDocument {
 
     // ── Private wiring ────────────────────────────────────────────────────
 
-    private void wireBodies() {
+    private int wireBodies() {
+        int infoObjNum = wireInfo();
         wireCatalog();
         wirePages();
         for (PdfPage page : pages) {
@@ -196,6 +224,42 @@ public final class PdfDocument {
             wireContents(page);
         }
         registry.setRoot(catalogNum);
+        return infoObjNum;
+    }
+
+    private int wireInfo() {
+        int infoObjNum = registry.allocate();
+        PdfInfo snapshot = info;
+        registry.setBody(infoObjNum, w -> {
+            w.beginDictionary();
+            boolean first = true;
+            first = writeInfoEntry(w, "Producer", PRODUCER_VALUE, first);
+            if (snapshot != null) {
+                first = writeInfoEntry(w, "Title", snapshot.getTitle(), first);
+                first = writeInfoEntry(w, "Author", snapshot.getAuthor(), first);
+                first = writeInfoEntry(w, "Subject", snapshot.getSubject(), first);
+                first = writeInfoEntry(w, "Keywords", snapshot.getKeywords(), first);
+                first = writeInfoEntry(w, "Creator", snapshot.getCreator(), first);
+                first = writeInfoEntry(w, "CreationDate", snapshot.getCreationDate(), first);
+                first = writeInfoEntry(w, "ModDate", snapshot.getModDate(), first);
+            }
+            w.endDictionary();
+        });
+        return infoObjNum;
+    }
+
+    private static boolean writeInfoEntry(PdfWriter writer, String key, String value, boolean first)
+            throws IOException {
+        if (value == null) {
+            return first;
+        }
+        if (!first) {
+            writer.writeSpace();
+        }
+        writer.writeName(key);
+        writer.writeSpace();
+        writer.writeLiteralString(value);
+        return false;
     }
 
     private void wireCatalog() {
@@ -315,6 +379,14 @@ public final class PdfDocument {
             return baos.toByteArray();
         } finally {
             deflater.end();
+        }
+    }
+
+    private static MessageDigest sha256Digest() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
         }
     }
 }
