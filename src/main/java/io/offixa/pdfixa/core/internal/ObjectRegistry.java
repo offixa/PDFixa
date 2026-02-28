@@ -111,10 +111,13 @@ public final class ObjectRegistry {
         for (Entry entry : entries) {
             entry.offset = writer.beginObject(entry.objNum, 0);
             offsets[entry.objNum] = entry.offset;
-            entry.body.writeTo(writer);
+            PdfSerializable body = entry.body;
+            body.writeTo(writer);
             writer.writeNewline();
             writer.endObject();
+            entry.body = null;
         }
+        entries.clear();
     }
 
     // ── Post-serialization queries ─────────────────────────────────────
@@ -136,6 +139,7 @@ public final class ObjectRegistry {
      */
     public long[] getOffsets() {
         requireSealed();
+        requireOffsetsAvailable();
         return offsets.clone();
     }
 
@@ -146,6 +150,7 @@ public final class ObjectRegistry {
      */
     public long getOffset(int objNum) {
         requireSealed();
+        requireOffsetsAvailable();
         if (objNum < 1 || objNum >= nextObjNum) {
             throw new IllegalArgumentException("unknown object number: " + objNum);
         }
@@ -162,9 +167,24 @@ public final class ObjectRegistry {
         return rootObjNum;
     }
 
+    /**
+     * Releases post-serialization state once xref/trailer writing has finished.
+     * After this call, offsets are no longer available.
+     */
+    public void clearPostSaveState() {
+        requireSealed();
+        offsets = null;
+    }
+
     private void requireSealed() {
         if (!sealed) {
             throw new IllegalStateException("call writeAll() first");
+        }
+    }
+
+    private void requireOffsetsAvailable() {
+        if (offsets == null) {
+            throw new IllegalStateException("offsets have been cleared after save");
         }
     }
 }

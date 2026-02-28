@@ -211,6 +211,8 @@ public final class PdfDocument {
                 startxref);
 
         writer.finish();
+        registry.clearPostSaveState();
+        pages.clear();
     }
 
     // ── Private wiring ────────────────────────────────────────────────────

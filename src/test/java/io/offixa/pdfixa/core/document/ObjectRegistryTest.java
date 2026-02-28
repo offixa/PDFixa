@@ -8,7 +8,9 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -197,6 +199,20 @@ class ObjectRegistryTest {
             copy[1] = 999_999L; // mutate the copy
             assertEquals(0L, registry.getOffset(1)); // original must be unchanged
         }
+
+        @Test
+        void writeAllClearsInternalBodyStorage() throws Exception {
+            int a = registry.allocate();
+            int b = registry.allocate();
+            registry.setBody(a, w -> w.writeInt(11));
+            registry.setBody(b, w -> w.writeInt(22));
+            registry.setRoot(a);
+
+            registry.writeAll(writer);
+
+            assertEquals(0, internalEntryCount(registry),
+                    "writeAll() must clear internal entry/body storage to release memory");
+        }
     }
 
     // ── Post-serialization queries ─────────────────────────────────
@@ -252,5 +268,12 @@ class ObjectRegistryTest {
             registry.writeAll(writer);
             assertEquals(3, registry.getObjectCount());
         }
+    }
+
+    private static int internalEntryCount(ObjectRegistry registry) throws Exception {
+        Field entriesField = ObjectRegistry.class.getDeclaredField("entries");
+        entriesField.setAccessible(true);
+        ArrayList<?> entries = (ArrayList<?>) entriesField.get(registry);
+        return entries.size();
     }
 }

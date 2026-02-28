@@ -1,9 +1,14 @@
 package io.offixa.pdfixa.core.document;
 
 import io.offixa.pdfixa.core.content.ContentStream;
+import io.offixa.pdfixa.core.text.Base14FontMetrics;
+import io.offixa.pdfixa.core.text.Base14Fonts;
+import io.offixa.pdfixa.core.text.TextWrapper;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -63,6 +68,61 @@ public final class PdfPage {
         content.doXObject(img.getAlias());
         content.restoreState();
         usedImages.add(img);
+    }
+
+    /**
+     * Draws wrapped text inside a virtual box with a fixed maximum line width.
+     *
+     * <p>The {@code y} coordinate is the baseline of the first emitted line.
+     * Wrapping uses deterministic, space-based greedy fitting with newline
+     * forced breaks and character-level fallback for long words.
+     *
+     * @param x left position of the first line baseline
+     * @param y baseline of the first line
+     * @param width maximum line width in points (must be {@code > 0})
+     * @param lineHeight baseline step between lines (must be {@code > 0})
+     * @param fontName Base-14 canonical font name
+     * @param fontSize font size in points (must be {@code > 0})
+     * @param text input text (Latin-1 only)
+     */
+    public void drawTextBox(
+            double x,
+            double y,
+            double width,
+            double lineHeight,
+            String fontName,
+            double fontSize,
+            String text) {
+        Objects.requireNonNull(fontName, "fontName");
+        Objects.requireNonNull(text, "text");
+        if (width <= 0) {
+            throw new IllegalArgumentException("width must be > 0");
+        }
+        if (lineHeight <= 0) {
+            throw new IllegalArgumentException("lineHeight must be > 0");
+        }
+        if (fontSize <= 0) {
+            throw new IllegalArgumentException("fontSize must be > 0");
+        }
+
+        String canonicalFont = Base14Fonts.normalize(fontName);
+        List<String> lines = TextWrapper.wrap(
+                text,
+                canonicalFont,
+                fontSize,
+                width,
+                Base14FontMetrics.getInstance());
+
+        content.beginText()
+               .setFont(canonicalFont, fontSize)
+               .moveText(x, y);
+        for (int i = 0; i < lines.size(); i++) {
+            content.showText(lines.get(i));
+            if (i + 1 < lines.size()) {
+                content.moveText(0, -lineHeight);
+            }
+        }
+        content.endText();
     }
 
     int getPageObjNum() {
