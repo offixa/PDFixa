@@ -42,6 +42,7 @@ public final class PdfDocument {
     private final int catalogNum;
     private final int pagesNum;
     private final List<PdfPage> pages = new ArrayList<>();
+    private boolean saved;
 
     /**
      * Creates a new, empty document.
@@ -131,37 +132,41 @@ public final class PdfDocument {
      * Serializes the complete document to {@code out}.
      *
      * <p>The stream is not closed by this method; the caller is responsible
-     * for closing {@code out}.
+     * for closing {@code out}. This method can be called only once.
+     * Once saving begins, subsequent calls fail even if an I/O error occurs.
      *
      * @param out destination stream
      * @throws IOException              if an I/O error occurs
-     * @throws IllegalStateException    if no pages were added
+     * @throws IllegalStateException    if no pages were added or the document was already saved
      */
     public void save(OutputStream out) throws IOException {
         Objects.requireNonNull(out, "out");
+        if (saved) {
+            throw new IllegalStateException("document has already been saved");
+        }
         if (pages.isEmpty()) {
             throw new IllegalStateException("document has no pages");
         }
+        saved = true;
 
-        try (PdfWriter writer = new PdfWriter(out)) {
-            writer.writeBytes(HEADER_LINE1);
-            writer.writeBytes(HEADER_LINE2);
+        PdfWriter writer = new PdfWriter(out);
+        writer.writeBytes(HEADER_LINE1);
+        writer.writeBytes(HEADER_LINE2);
 
-            wireBodies();
+        wireBodies();
 
-            registry.writeAll(writer);
+        registry.writeAll(writer);
 
-            long startxref = XrefTableBuilder.write(
-                    writer, registry.getOffsets(), registry.getObjectCount());
+        long startxref = XrefTableBuilder.write(
+                writer, registry.getOffsets(), registry.getObjectCount());
 
-            TrailerBuilder.write(
-                    writer,
-                    registry.getObjectCount() + 1,
-                    registry.getRootObjectNumber(),
-                    startxref);
+        TrailerBuilder.write(
+                writer,
+                registry.getObjectCount() + 1,
+                registry.getRootObjectNumber(),
+                startxref);
 
-            writer.flush();
-        }
+        writer.finish();
     }
 
     // ── Private wiring ────────────────────────────────────────────────────

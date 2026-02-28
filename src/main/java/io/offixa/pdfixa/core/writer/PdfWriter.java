@@ -48,6 +48,13 @@ public final class PdfWriter implements Closeable {
     private static final byte[] HEX_DIGITS = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
 
     private final CountingOutputStream out;
+    private State state = State.WRITING;
+
+    private enum State {
+        WRITING,
+        FINISHED,
+        CLOSED
+    }
 
     public PdfWriter(OutputStream out) {
         this.out = new CountingOutputStream(Objects.requireNonNull(out, "out"));
@@ -60,6 +67,7 @@ public final class PdfWriter implements Closeable {
      * Used to record object positions for the cross-reference table.
      */
     public long getPosition() {
+        requireNotClosed();
         return out.getPosition();
     }
 
@@ -70,23 +78,27 @@ public final class PdfWriter implements Closeable {
      * Use for pre-encoded data such as stream content or the PDF header.
      */
     public void writeBytes(byte[] data) throws IOException {
+        requireWriting();
         Objects.requireNonNull(data, "data");
         out.write(data);
     }
 
     /** Writes a portion of a byte array with no interpretation. */
     public void writeBytes(byte[] data, int off, int len) throws IOException {
+        requireWriting();
         Objects.requireNonNull(data, "data");
         out.write(data, off, len);
     }
 
     /** Writes a single {@code \n}. Never {@code \r\n}. */
     public void writeNewline() throws IOException {
+        requireWriting();
         out.write(NEWLINE);
     }
 
     /** Writes a single ASCII space. */
     public void writeSpace() throws IOException {
+        requireWriting();
         out.write(SPACE);
     }
 
@@ -94,11 +106,13 @@ public final class PdfWriter implements Closeable {
 
     /** Writes an integer token. Example output: {@code 42} */
     public void writeInt(int value) throws IOException {
+        requireWriting();
         writeAscii(Integer.toString(value));
     }
 
     /** Writes a long integer token. Example output: {@code 100000} */
     public void writeLong(long value) throws IOException {
+        requireWriting();
         writeAscii(Long.toString(value));
     }
 
@@ -108,6 +122,7 @@ public final class PdfWriter implements Closeable {
      * Up to 6 fractional digits; trailing zeros are stripped.
      */
     public void writeReal(double value) throws IOException {
+        requireWriting();
         if (Double.isNaN(value)) {
             throw new IllegalArgumentException("NaN is not a valid PDF real number");
         }
@@ -126,6 +141,7 @@ public final class PdfWriter implements Closeable {
      * @param name the name <em>without</em> the leading slash
      */
     public void writeName(String name) throws IOException {
+        requireWriting();
         Objects.requireNonNull(name, "name");
         out.write('/');
         for (int i = 0; i < name.length(); i++) {
@@ -150,6 +166,7 @@ public final class PdfWriter implements Closeable {
      * Only bytes in the Latin-1 range are supported (PDF standard encoding).
      */
     public void writeLiteralString(String value) throws IOException {
+        requireWriting();
         Objects.requireNonNull(value, "value");
         out.write('(');
         for (int i = 0; i < value.length(); i++) {
@@ -175,6 +192,7 @@ public final class PdfWriter implements Closeable {
 
     /** Writes a PDF hex string: {@code <4E6F>}. */
     public void writeHexString(byte[] data) throws IOException {
+        requireWriting();
         Objects.requireNonNull(data, "data");
         out.write('<');
         for (byte b : data) {
@@ -185,11 +203,13 @@ public final class PdfWriter implements Closeable {
 
     /** Writes {@code true} or {@code false}. */
     public void writeBoolean(boolean value) throws IOException {
+        requireWriting();
         out.write(value ? BOOL_TRUE : BOOL_FALSE);
     }
 
     /** Writes the PDF {@code null} keyword. */
     public void writeNull() throws IOException {
+        requireWriting();
         out.write(NULL_TOKEN);
     }
 
@@ -198,6 +218,7 @@ public final class PdfWriter implements Closeable {
      * Example output: {@code 4 0 R}
      */
     public void writeReference(int objNum, int gen) throws IOException {
+        requireWriting();
         writeAscii(Integer.toString(objNum));
         out.write(' ');
         writeAscii(Integer.toString(gen));
@@ -224,6 +245,7 @@ public final class PdfWriter implements Closeable {
      * wrappers are managed by {@link io.offixa.pdfixa.core.document.ObjectRegistry}.
      */
     public void writeStream(byte[] data) throws IOException {
+        requireWriting();
         Objects.requireNonNull(data, "data");
         out.write(DICT_OPEN);
         out.write(SPACE);
@@ -258,6 +280,7 @@ public final class PdfWriter implements Closeable {
      * @param height    image height in pixels
      */
     public void writeJpegImageStream(byte[] jpegBytes, int width, int height) throws IOException {
+        requireWriting();
         Objects.requireNonNull(jpegBytes, "jpegBytes");
         out.write(DICT_OPEN);
         out.write(SPACE);
@@ -308,6 +331,7 @@ public final class PdfWriter implements Closeable {
      * @param height   image height in pixels
      */
     public void writePngImageStream(byte[] idatData, int width, int height) throws IOException {
+        requireWriting();
         Objects.requireNonNull(idatData, "idatData");
         out.write(DICT_OPEN);
         out.write(SPACE);
@@ -364,6 +388,7 @@ public final class PdfWriter implements Closeable {
      * {@code compress()} helper.
      */
     public void writeCompressedStream(byte[] compressed) throws IOException {
+        requireWriting();
         Objects.requireNonNull(compressed, "compressed");
         out.write(DICT_OPEN);
         out.write(SPACE);
@@ -390,6 +415,7 @@ public final class PdfWriter implements Closeable {
      * @return the byte offset where this object begins — store this for the xref table
      */
     public long beginObject(int objNum, int gen) throws IOException {
+        requireWriting();
         long offset = out.getPosition();
         writeAscii(Integer.toString(objNum));
         out.write(' ');
@@ -400,6 +426,7 @@ public final class PdfWriter implements Closeable {
 
     /** Writes {@code endobj\n}. */
     public void endObject() throws IOException {
+        requireWriting();
         out.write(OBJ_OUTRO);
     }
 
@@ -407,21 +434,25 @@ public final class PdfWriter implements Closeable {
 
     /** Writes {@code <<} (dictionary open). */
     public void beginDictionary() throws IOException {
+        requireWriting();
         out.write(DICT_OPEN);
     }
 
     /** Writes {@code >>} (dictionary close). */
     public void endDictionary() throws IOException {
+        requireWriting();
         out.write(DICT_CLOSE);
     }
 
     /** Writes {@code [} (array open). */
     public void beginArray() throws IOException {
+        requireWriting();
         out.write('[');
     }
 
     /** Writes {@code ]} (array close). */
     public void endArray() throws IOException {
+        requireWriting();
         out.write(']');
     }
 
@@ -432,6 +463,7 @@ public final class PdfWriter implements Closeable {
      * The caller must not include the leading {@code %}.
      */
     public void writeComment(String text) throws IOException {
+        requireWriting();
         Objects.requireNonNull(text, "text");
         out.write('%');
         writeAscii(text);
@@ -441,24 +473,68 @@ public final class PdfWriter implements Closeable {
     // ── Lifecycle ──────────────────────────────────────────────────────
 
     public void flush() throws IOException {
+        requireNotClosed();
         out.flush();
+    }
+
+    /**
+     * Flushes pending bytes without closing the underlying stream.
+     * Transitions WRITING -> FINISHED.
+     */
+    public void finish() throws IOException {
+        if (state == State.CLOSED) {
+            throw new IllegalStateException("PdfWriter is closed");
+        }
+        if (state == State.WRITING) {
+            out.flush();
+            state = State.FINISHED;
+        }
+    }
+
+    public boolean isFinished() {
+        return state != State.WRITING;
     }
 
     @Override
     public void close() throws IOException {
-        out.close();
+        if (state == State.CLOSED) {
+            return;
+        }
+        try {
+            if (state == State.WRITING) {
+                out.flush();
+            }
+        } finally {
+            state = State.CLOSED;
+            out.close();
+        }
     }
 
     // ── Internal helpers ───────────────────────────────────────────────
 
     private void writeAscii(String s) throws IOException {
+        requireWriting();
         out.write(s.getBytes(StandardCharsets.US_ASCII));
     }
 
     private void writeHexByte(byte b) throws IOException {
+        requireWriting();
         int unsigned = b & 0xFF;
         out.write(HEX_DIGITS[unsigned >>> 4]);
         out.write(HEX_DIGITS[unsigned & 0x0F]);
+    }
+
+    private void requireWriting() {
+        if (state != State.WRITING) {
+            throw new IllegalStateException(
+                    "PdfWriter is " + state + "; write operations are forbidden");
+        }
+    }
+
+    private void requireNotClosed() {
+        if (state == State.CLOSED) {
+            throw new IllegalStateException("PdfWriter is closed");
+        }
     }
 
     private static boolean mustEscapeInName(char ch) {
