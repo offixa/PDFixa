@@ -1,6 +1,7 @@
 package io.offixa.pdfixa.core.document;
 
-import io.offixa.pdfixa.core.writer.PdfWriter;
+import io.offixa.pdfixa.core.internal.ObjectRegistry;
+import io.offixa.pdfixa.core.internal.PdfWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

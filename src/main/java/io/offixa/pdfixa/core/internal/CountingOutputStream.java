@@ -1,4 +1,4 @@
-package io.offixa.pdfixa.core.io;
+package io.offixa.pdfixa.core.internal;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;

@@ -1,7 +1,7 @@
 package io.offixa.pdfixa.core.content;
 
 import io.offixa.pdfixa.core.document.FontRegistry;
-import io.offixa.pdfixa.core.writer.PdfWriter;
+import io.offixa.pdfixa.core.internal.PdfWriter;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -214,6 +214,70 @@ public final class ContentStream {
         return this;
     }
 
+    // ── Color operators ──────────────────────────────────────────────────────
+
+    /**
+     * Appends {@code <r> <g> <b> rg\n} — set fill color in DeviceRGB.
+     *
+     * @param r red component, 0.0–1.0
+     * @param g green component, 0.0–1.0
+     * @param b blue component, 0.0–1.0
+     * @throws IllegalArgumentException if any component is outside [0, 1]
+     */
+    public ContentStream setFillColor(double r, double g, double b) {
+        requireUnit(r, "r");
+        requireUnit(g, "g");
+        requireUnit(b, "b");
+        buf.append(PdfWriter.formatReal(r))
+           .append(' ').append(PdfWriter.formatReal(g))
+           .append(' ').append(PdfWriter.formatReal(b))
+           .append(" rg\n");
+        return this;
+    }
+
+    /**
+     * Appends {@code <r> <g> <b> RG\n} — set stroke color in DeviceRGB.
+     *
+     * @param r red component, 0.0–1.0
+     * @param g green component, 0.0–1.0
+     * @param b blue component, 0.0–1.0
+     * @throws IllegalArgumentException if any component is outside [0, 1]
+     */
+    public ContentStream setStrokeColor(double r, double g, double b) {
+        requireUnit(r, "r");
+        requireUnit(g, "g");
+        requireUnit(b, "b");
+        buf.append(PdfWriter.formatReal(r))
+           .append(' ').append(PdfWriter.formatReal(g))
+           .append(' ').append(PdfWriter.formatReal(b))
+           .append(" RG\n");
+        return this;
+    }
+
+    /**
+     * Appends {@code <gray> g\n} — set fill color in DeviceGray.
+     *
+     * @param gray gray level, 0.0 (black) – 1.0 (white)
+     * @throws IllegalArgumentException if {@code gray} is outside [0, 1]
+     */
+    public ContentStream setGray(double gray) {
+        requireUnit(gray, "gray");
+        buf.append(PdfWriter.formatReal(gray)).append(" g\n");
+        return this;
+    }
+
+    /**
+     * Appends {@code <gray> G\n} — set stroke color in DeviceGray.
+     *
+     * @param gray gray level, 0.0 (black) – 1.0 (white)
+     * @throws IllegalArgumentException if {@code gray} is outside [0, 1]
+     */
+    public ContentStream setGrayStroke(double gray) {
+        requireUnit(gray, "gray");
+        buf.append(PdfWriter.formatReal(gray)).append(" G\n");
+        return this;
+    }
+
     // ── Graphics state operators ────────────────────────────────────────────
 
     /** Appends {@code q\n} — save the current graphics state. */
@@ -264,5 +328,14 @@ public final class ContentStream {
      */
     public byte[] toBytes() {
         return buf.toString().getBytes(StandardCharsets.US_ASCII);
+    }
+
+    // ── Internal helpers ────────────────────────────────────────────────────
+
+    private static void requireUnit(double value, String name) {
+        if (value < 0.0 || value > 1.0) {
+            throw new IllegalArgumentException(
+                    name + " must be in [0, 1], got " + value);
+        }
     }
 }

@@ -1,5 +1,6 @@
 package io.offixa.pdfixa.core.writer;
 
+import io.offixa.pdfixa.core.internal.PdfWriter;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;

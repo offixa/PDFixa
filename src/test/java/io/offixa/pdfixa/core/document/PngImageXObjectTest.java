@@ -1,6 +1,7 @@
 package io.offixa.pdfixa.core.document;
 
 import io.offixa.pdfixa.ByteUtil;
+import io.offixa.pdfixa.core.internal.PngParser;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;

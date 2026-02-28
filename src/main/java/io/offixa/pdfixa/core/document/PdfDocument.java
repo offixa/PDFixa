@@ -1,6 +1,10 @@
 package io.offixa.pdfixa.core.document;
 
-import io.offixa.pdfixa.core.writer.PdfWriter;
+import io.offixa.pdfixa.core.internal.ObjectRegistry;
+import io.offixa.pdfixa.core.internal.PdfWriter;
+import io.offixa.pdfixa.core.internal.PngParser;
+import io.offixa.pdfixa.core.internal.TrailerBuilder;
+import io.offixa.pdfixa.core.internal.XrefTableBuilder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -39,22 +43,35 @@ public final class PdfDocument {
     private final ObjectRegistry registry;
     private final FontRegistry fontRegistry;
     private final ImageRegistry imageRegistry;
+    private final PdfPageSize pageSize;
     private final int catalogNum;
     private final int pagesNum;
     private final List<PdfPage> pages = new ArrayList<>();
     private boolean saved;
 
     /**
-     * Creates a new, empty document.
-     * Allocates the Catalog and Pages objects in the internal registry
-     * but does not write any bytes.
+     * Creates a new, empty A4 document.
+     * Equivalent to {@code new PdfDocument(PdfPageSize.A4)}.
      */
     public PdfDocument() {
-        registry      = new ObjectRegistry();
-        fontRegistry  = new FontRegistry();
-        imageRegistry = new ImageRegistry();
-        catalogNum    = registry.allocate(); // always 1
-        pagesNum      = registry.allocate(); // always 2
+        this(PdfPageSize.A4);
+    }
+
+    /**
+     * Creates a new, empty document with the given page size.
+     * Allocates the Catalog and Pages objects in the internal registry
+     * but does not write any bytes.
+     *
+     * @param pageSize the page dimensions for every page; must not be {@code null}
+     */
+    public PdfDocument(PdfPageSize pageSize) {
+        Objects.requireNonNull(pageSize, "pageSize");
+        this.pageSize  = pageSize;
+        registry       = new ObjectRegistry();
+        fontRegistry   = new FontRegistry();
+        imageRegistry  = new ImageRegistry();
+        catalogNum     = registry.allocate(); // always 1
+        pagesNum       = registry.allocate(); // always 2
     }
 
     /**
@@ -224,10 +241,10 @@ public final class PdfDocument {
             w.writeSpace();
             w.writeName("MediaBox"); w.writeSpace();
             w.beginArray();
-            w.writeInt(0);   w.writeSpace();
-            w.writeInt(0);   w.writeSpace();
-            w.writeInt(595); w.writeSpace();
-            w.writeInt(842);
+            w.writeInt(0);                      w.writeSpace();
+            w.writeInt(0);                      w.writeSpace();
+            w.writeInt(pageSize.getWidthPt());  w.writeSpace();
+            w.writeInt(pageSize.getHeightPt());
             w.endArray();
             if (!usedFonts.isEmpty() || !usedImages.isEmpty()) {
                 w.writeSpace();

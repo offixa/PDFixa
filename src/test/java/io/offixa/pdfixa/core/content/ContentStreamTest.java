@@ -99,6 +99,108 @@ class ContentStreamTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Color operators
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void setFillColor_produces_rg_operator() {
+        byte[] bytes = new ContentStream().setFillColor(1, 0, 0).toBytes();
+        assertArrayEquals(ByteUtil.ascii("1 0 0 rg\n"), bytes);
+    }
+
+    @Test
+    void setFillColor_fractional_values() {
+        byte[] bytes = new ContentStream().setFillColor(0.2, 0.4, 0.6).toBytes();
+        assertArrayEquals(ByteUtil.ascii("0.2 0.4 0.6 rg\n"), bytes);
+    }
+
+    @Test
+    void setStrokeColor_produces_RG_operator() {
+        byte[] bytes = new ContentStream().setStrokeColor(0, 0, 1).toBytes();
+        assertArrayEquals(ByteUtil.ascii("0 0 1 RG\n"), bytes);
+    }
+
+    @Test
+    void setGray_produces_g_operator() {
+        byte[] bytes = new ContentStream().setGray(0.5).toBytes();
+        assertArrayEquals(ByteUtil.ascii("0.5 g\n"), bytes);
+    }
+
+    @Test
+    void setGray_zero_is_black() {
+        byte[] bytes = new ContentStream().setGray(0).toBytes();
+        assertArrayEquals(ByteUtil.ascii("0 g\n"), bytes);
+    }
+
+    @Test
+    void setGray_one_is_white() {
+        byte[] bytes = new ContentStream().setGray(1).toBytes();
+        assertArrayEquals(ByteUtil.ascii("1 g\n"), bytes);
+    }
+
+    @Test
+    void setGrayStroke_produces_G_operator() {
+        byte[] bytes = new ContentStream().setGrayStroke(0.75).toBytes();
+        assertArrayEquals(ByteUtil.ascii("0.75 G\n"), bytes);
+    }
+
+    @Test
+    void setFillColor_rejects_negative_component() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ContentStream().setFillColor(-0.1, 0, 0));
+    }
+
+    @Test
+    void setFillColor_rejects_component_above_one() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ContentStream().setFillColor(0, 1.1, 0));
+    }
+
+    @Test
+    void setStrokeColor_rejects_out_of_range() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ContentStream().setStrokeColor(0, 0, 2));
+    }
+
+    @Test
+    void setGray_rejects_negative() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ContentStream().setGray(-0.01));
+    }
+
+    @Test
+    void setGray_rejects_above_one() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ContentStream().setGray(1.001));
+    }
+
+    @Test
+    void setGrayStroke_rejects_out_of_range() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ContentStream().setGrayStroke(1.5));
+    }
+
+    @Test
+    void color_operators_chain_correctly() {
+        byte[] bytes = new ContentStream()
+                .setFillColor(1, 0, 0)
+                .setStrokeColor(0, 0, 1)
+                .setGray(0.5)
+                .setGrayStroke(0.25)
+                .toBytes();
+        assertSeq(bytes, "1 0 0 rg\n");
+        assertSeq(bytes, "0 0 1 RG\n");
+        assertSeq(bytes, "0.5 g\n");
+        assertSeq(bytes, "0.25 G\n");
+    }
+
+    @Test
+    void setFillColor_boundary_values_accepted() {
+        assertDoesNotThrow(() -> new ContentStream().setFillColor(0, 0, 0));
+        assertDoesNotThrow(() -> new ContentStream().setFillColor(1, 1, 1));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // showText escaping
     // ─────────────────────────────────────────────────────────────────────────
 

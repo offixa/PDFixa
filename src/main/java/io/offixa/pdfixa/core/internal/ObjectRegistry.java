@@ -1,7 +1,7 @@
-package io.offixa.pdfixa.core.document;
+package io.offixa.pdfixa.core.internal;
 
 import io.offixa.pdfixa.core.writer.PdfSerializable;
-import io.offixa.pdfixa.core.writer.PdfWriter;
+import io.offixa.pdfixa.core.internal.PdfWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;

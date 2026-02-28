@@ -1,10 +1,10 @@
 package io.offixa.pdfixa;
 
 import io.offixa.pdfixa.core.content.ContentStream;
-import io.offixa.pdfixa.core.document.ObjectRegistry;
-import io.offixa.pdfixa.core.document.TrailerBuilder;
-import io.offixa.pdfixa.core.document.XrefTableBuilder;
-import io.offixa.pdfixa.core.writer.PdfWriter;
+import io.offixa.pdfixa.core.internal.ObjectRegistry;
+import io.offixa.pdfixa.core.internal.PdfWriter;
+import io.offixa.pdfixa.core.internal.TrailerBuilder;
+import io.offixa.pdfixa.core.internal.XrefTableBuilder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

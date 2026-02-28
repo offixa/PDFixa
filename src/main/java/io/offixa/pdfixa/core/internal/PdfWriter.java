@@ -1,6 +1,6 @@
-package io.offixa.pdfixa.core.writer;
+package io.offixa.pdfixa.core.internal;
 
-import io.offixa.pdfixa.core.io.CountingOutputStream;
+import io.offixa.pdfixa.core.internal.CountingOutputStream;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -242,7 +242,7 @@ public final class PdfWriter implements Closeable {
      *
      * <p>This method is intended to be used as a {@link PdfSerializable} body
      * inside an indirect object; the surrounding {@code obj}/{@code endobj}
-     * wrappers are managed by {@link io.offixa.pdfixa.core.document.ObjectRegistry}.
+     * wrappers are managed by {@link io.offixa.pdfixa.core.internal.ObjectRegistry}.
      */
     public void writeStream(byte[] data) throws IOException {
         requireWriting();

@@ -1,6 +1,6 @@
-package io.offixa.pdfixa.core.document;
+package io.offixa.pdfixa.core.internal;
 
-import io.offixa.pdfixa.core.writer.PdfWriter;
+import io.offixa.pdfixa.core.internal.PdfWriter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,7 +20,7 @@ public final class TrailerBuilder {
      * @param size       total number of objects including the free entry (objectCount + 1)
      * @param rootObjNum object number of the document catalog
      * @param startxref  byte offset of the {@code xref} keyword, as returned by
-     *                   {@link XrefTableBuilder#write}
+     *                   {@link io.offixa.pdfixa.core.internal.XrefTableBuilder#write}
      */
     public static void write(PdfWriter writer, int size, int rootObjNum, long startxref)
             throws IOException {

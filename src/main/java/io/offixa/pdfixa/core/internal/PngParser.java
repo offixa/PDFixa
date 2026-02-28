@@ -1,4 +1,4 @@
-package io.offixa.pdfixa.core.document;
+package io.offixa.pdfixa.core.internal;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -24,17 +24,17 @@ import java.util.Objects;
  * stream body alongside {@code /Filter /FlateDecode} and {@code /DecodeParms}
  * {@code /Predictor 15}.
  *
- * <p>This class is package-private and not thread-safe.
+ * <p>This class is not thread-safe.
  */
-final class PngParser {
+public final class PngParser {
 
     private static final byte[] PNG_SIGNATURE = {
         (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
     };
 
-    final int    width;
-    final int    height;
-    final byte[] idatData;
+    public final int    width;
+    public final int    height;
+    public final byte[] idatData;
 
     private PngParser(int width, int height, byte[] idatData) {
         this.width    = width;
@@ -49,7 +49,7 @@ final class PngParser {
      * @param pngBytes raw PNG file bytes; must not be {@code null}
      * @throws IllegalArgumentException if the bytes are not a supported PNG
      */
-    static PngParser parse(byte[] pngBytes) {
+    public static PngParser parse(byte[] pngBytes) {
         Objects.requireNonNull(pngBytes, "pngBytes");
 
         if (pngBytes.length < 8) {

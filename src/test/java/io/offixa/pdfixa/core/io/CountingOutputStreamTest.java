@@ -1,5 +1,6 @@
 package io.offixa.pdfixa.core.io;
 
+import io.offixa.pdfixa.core.internal.CountingOutputStream;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
