@@ -156,6 +156,19 @@ public final class ContentStream {
         return this;
     }
 
+    /**
+     * Appends {@code <hexString> Tj\n} — show text from a hex-encoded string.
+     *
+     * <p>The caller is responsible for providing valid hex digits.
+     * This method does not affect or share logic with {@link #showText}.
+     *
+     * @param hexString hex-encoded byte sequence (without angle brackets)
+     */
+    public ContentStream showTextHex(String hexString) {
+        buf.append('<').append(hexString).append("> Tj\n");
+        return this;
+    }
+
     // ── Graphics operators ─────────────────────────────────────────────────
 
     /**

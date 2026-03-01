@@ -25,6 +25,7 @@ public final class FontRegistry {
 
     private final Map<String, String> nameToAlias = new LinkedHashMap<>();
     private final Map<String, String> aliasToName = new LinkedHashMap<>();
+    private final Map<String, Integer> indirectFontObjects = new LinkedHashMap<>();
     private int nextIndex = 1;
 
     /**
@@ -48,6 +49,46 @@ public final class FontRegistry {
      */
     public String getFontName(String alias) {
         return aliasToName.get(alias);
+    }
+
+    /**
+     * Registers an indirect font whose definition lives in a separate
+     * indirect PDF object.
+     *
+     * <p>Alias generation uses the same {@code nextIndex} counter as
+     * {@link #getAlias} to preserve deterministic numbering.
+     *
+     * @param fontName     logical font name
+     * @param objectNumber the indirect object number holding the font definition
+     * @return the alias assigned (e.g. {@code "F3"})
+     */
+    public String registerIndirectFont(String fontName, int objectNumber) {
+        String alias = "F" + nextIndex++;
+        nameToAlias.put(fontName, alias);
+        aliasToName.put(alias, fontName);
+        indirectFontObjects.put(alias, objectNumber);
+        return alias;
+    }
+
+    /**
+     * Returns {@code true} if the given alias refers to an indirect font
+     * (registered via {@link #registerIndirectFont}).
+     */
+    public boolean isIndirect(String alias) {
+        return indirectFontObjects.containsKey(alias);
+    }
+
+    /**
+     * Returns the indirect object number for the given alias.
+     *
+     * @throws IllegalArgumentException if the alias is not an indirect font
+     */
+    public int getIndirectObjectNumber(String alias) {
+        Integer objNum = indirectFontObjects.get(alias);
+        if (objNum == null) {
+            throw new IllegalArgumentException("not an indirect font alias: " + alias);
+        }
+        return objNum;
     }
 
     /**

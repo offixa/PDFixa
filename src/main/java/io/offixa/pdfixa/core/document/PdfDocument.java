@@ -52,6 +52,7 @@ public final class PdfDocument {
     private final int catalogNum;
     private final int pagesNum;
     private final List<PdfPage> pages = new ArrayList<>();
+    private final List<PdfObjectContributor> contributors = new ArrayList<>();
     private PdfInfo info;
     private boolean saved;
 
@@ -152,6 +153,23 @@ public final class PdfDocument {
     }
 
     /**
+     * Registers a contributor that will be invoked during {@link #save} to
+     * inject additional indirect objects into the document.
+     *
+     * <p>Contributors are executed in registration order, before page
+     * resource wiring begins.
+     *
+     * @param contributor the contributor to register; must not be {@code null}
+     */
+    public void registerContributor(PdfObjectContributor contributor) {
+        Objects.requireNonNull(contributor, "contributor");
+        if (saved) {
+            throw new IllegalStateException("document has already been saved");
+        }
+        contributors.add(contributor);
+    }
+
+    /**
      * Sets document metadata to be written into the PDF {@code /Info} dictionary.
      *
      * @param info info value object with optional metadata fields
@@ -185,6 +203,13 @@ public final class PdfDocument {
             throw new IllegalStateException("document has no pages");
         }
         saved = true;
+
+        if (!contributors.isEmpty()) {
+            PdfDocumentContext ctx = new PdfDocumentContext(registry, fontRegistry);
+            for (PdfObjectContributor c : contributors) {
+                c.contribute(ctx);
+            }
+        }
 
         MessageDigest digest = sha256Digest();
         DigestOutputStream digestOut = new DigestOutputStream(out, digest);
@@ -323,15 +348,20 @@ public final class PdfDocument {
                     for (String alias : usedFonts) {
                         if (!firstFont) w.writeSpace();
                         firstFont = false;
-                        String baseFontName = fontRegistry.getFontName(alias);
-                        w.writeName(alias); w.writeSpace();
-                        w.beginDictionary();
-                        w.writeName("Type");     w.writeSpace(); w.writeName("Font");
-                        w.writeSpace();
-                        w.writeName("Subtype");  w.writeSpace(); w.writeName("Type1");
-                        w.writeSpace();
-                        w.writeName("BaseFont"); w.writeSpace(); w.writeName(baseFontName);
-                        w.endDictionary();
+                        if (fontRegistry.isIndirect(alias)) {
+                            w.writeName(alias); w.writeSpace();
+                            w.writeReference(fontRegistry.getIndirectObjectNumber(alias), 0);
+                        } else {
+                            String baseFontName = fontRegistry.getFontName(alias);
+                            w.writeName(alias); w.writeSpace();
+                            w.beginDictionary();
+                            w.writeName("Type");     w.writeSpace(); w.writeName("Font");
+                            w.writeSpace();
+                            w.writeName("Subtype");  w.writeSpace(); w.writeName("Type1");
+                            w.writeSpace();
+                            w.writeName("BaseFont"); w.writeSpace(); w.writeName(baseFontName);
+                            w.endDictionary();
+                        }
                     }
                     w.endDictionary();
                 }
