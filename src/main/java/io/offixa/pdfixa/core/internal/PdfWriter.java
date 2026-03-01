@@ -372,6 +372,36 @@ public final class PdfWriter implements Closeable {
     }
 
     /**
+     * Writes a TrueType FontFile2 stream body with both {@code /Length} and
+     * {@code /Length1} in the stream dictionary, as required by PDF spec §9.9.
+     *
+     * <p>Produces exactly:
+     * <pre>
+     * &lt;&lt; /Length N /Length1 N &gt;&gt;\n
+     * stream\n
+     * &lt;raw TTF bytes&gt;\n
+     * endstream
+     * </pre>
+     *
+     * @param ttfBytes raw TrueType font bytes
+     */
+    public void writeFontFileStream(byte[] ttfBytes) throws IOException {
+        requireWriting();
+        Objects.requireNonNull(ttfBytes, "ttfBytes");
+        out.write(DICT_OPEN);
+        out.write(SPACE);
+        writeName("Length");  out.write(SPACE); writeInt(ttfBytes.length);
+        out.write(SPACE);
+        writeName("Length1"); out.write(SPACE); writeInt(ttfBytes.length);
+        out.write(SPACE);
+        out.write(DICT_CLOSE);
+        out.write(NEWLINE);
+        out.write(STREAM_BEGIN);
+        out.write(ttfBytes);
+        out.write(STREAM_END);
+    }
+
+    /**
      * Writes a Flate-compressed PDF stream body.
      *
      * <p>Produces exactly:

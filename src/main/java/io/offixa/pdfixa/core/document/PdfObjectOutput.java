@@ -56,6 +56,12 @@ public interface PdfObjectOutput {
     /** Writes {@code >>} — end dictionary. */
     void endDictionary() throws IOException;
 
+    /** Writes {@code [} — begin array. */
+    void beginArray() throws IOException;
+
+    /** Writes {@code ]} — end array. */
+    void endArray() throws IOException;
+
     /**
      * Writes a complete PDF stream: dictionary header ({@code /Length}),
      * {@code stream}/{@code endstream} wrapper, and the raw bytes.
@@ -63,4 +69,12 @@ public interface PdfObjectOutput {
      * @param data the uncompressed stream bytes
      */
     void beginStream(byte[] data) throws IOException;
+
+    /**
+     * Writes a TrueType font file stream with {@code /Length} and {@code /Length1}
+     * declared in the stream dictionary, as required by PDF spec §9.9.
+     *
+     * @param ttfBytes raw TrueType font bytes
+     */
+    void beginFontFileStream(byte[] ttfBytes) throws IOException;
 }

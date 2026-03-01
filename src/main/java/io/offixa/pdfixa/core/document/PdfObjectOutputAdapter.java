@@ -77,8 +77,27 @@ final class PdfObjectOutputAdapter implements PdfObjectOutput {
     }
 
     @Override
+    public void beginArray() throws IOException {
+        sep();
+        w.beginArray();
+        needsSpace = false;
+    }
+
+    @Override
+    public void endArray() throws IOException {
+        w.endArray();
+        needsSpace = true;
+    }
+
+    @Override
     public void beginStream(byte[] data) throws IOException {
         w.writeStream(data);
+        needsSpace = false;
+    }
+
+    @Override
+    public void beginFontFileStream(byte[] ttfBytes) throws IOException {
+        w.writeFontFileStream(ttfBytes);
         needsSpace = false;
     }
 }

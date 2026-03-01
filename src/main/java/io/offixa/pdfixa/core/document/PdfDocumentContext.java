@@ -35,6 +35,22 @@ public final class PdfDocumentContext {
     }
 
     /**
+     * Allocates the next indirect object number and immediately assigns its body.
+     *
+     * <p>Equivalent to calling {@link #allocateObject()} followed by
+     * {@link #setObjectBody(int, PdfObjectWriter)}, but in a single step.
+     *
+     * @param writer non-null callback that writes the object body
+     * @return the newly allocated object number
+     */
+    public int allocateObject(PdfObjectWriter writer) {
+        Objects.requireNonNull(writer, "writer");
+        int objNum = registry.allocate();
+        registry.setBody(objNum, pdfWriter -> writer.write(new PdfObjectOutputAdapter(pdfWriter)));
+        return objNum;
+    }
+
+    /**
      * Assigns the serialization body for a previously allocated object.
      *
      * <p>The supplied {@link PdfObjectWriter} receives a {@link PdfObjectOutput}
