@@ -63,6 +63,11 @@ public final class FontRegistry {
      * @return the alias assigned (e.g. {@code "F3"})
      */
     public String registerIndirectFont(String fontName, int objectNumber) {
+        String existing = nameToAlias.get(fontName);
+        if (existing != null) {
+            indirectFontObjects.put(existing, objectNumber);
+            return existing;
+        }
         String alias = "F" + nextIndex++;
         nameToAlias.put(fontName, alias);
         aliasToName.put(alias, fontName);
