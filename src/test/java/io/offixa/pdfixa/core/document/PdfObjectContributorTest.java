@@ -66,10 +66,10 @@ class PdfObjectContributorTest {
 
         doc.registerContributor(ctx -> {
             int objNum = ctx.allocateObject();
-            ctx.setObjectBody(objNum, w -> {
-                w.beginDictionary();
-                w.writeName("Type");  w.writeSpace(); w.writeName("DummyObj");
-                w.endDictionary();
+            ctx.setObjectBody(objNum, out -> {
+                out.beginDictionary();
+                out.name("Type"); out.name("DummyObj");
+                out.endDictionary();
             });
         });
 

@@ -1,7 +1,6 @@
 package io.offixa.pdfixa.core.document;
 
 import io.offixa.pdfixa.core.internal.ObjectRegistry;
-import io.offixa.pdfixa.core.writer.PdfSerializable;
 
 import java.util.Objects;
 
@@ -38,12 +37,18 @@ public final class PdfDocumentContext {
     /**
      * Assigns the serialization body for a previously allocated object.
      *
+     * <p>The supplied {@link PdfObjectWriter} receives a {@link PdfObjectOutput}
+     * facade that hides all internal types. Whitespace between tokens is
+     * managed automatically.
+     *
      * @param objNum object number returned by {@link #allocateObject()}
-     * @param body   non-null serializer for the object's content tokens
+     * @param writer non-null callback that writes the object body
      */
-    public void setObjectBody(int objNum, PdfSerializable body) {
-        Objects.requireNonNull(body, "body");
-        registry.setBody(objNum, body);
+    public void setObjectBody(int objNum, PdfObjectWriter writer) {
+        Objects.requireNonNull(writer, "writer");
+        registry.setBody(objNum, pdfWriter -> {
+            writer.write(new PdfObjectOutputAdapter(pdfWriter));
+        });
     }
 
     /**
