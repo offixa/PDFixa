@@ -4,7 +4,6 @@ import io.offixa.pdfixa.core.internal.PdfWriter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 
 /**
  * Writes a classic PDF cross-reference table (§ 7.5.4 of PDF 1.7 spec).
@@ -16,11 +15,19 @@ import java.util.Locale;
  */
 public final class XrefTableBuilder {
 
+    private static final byte[] XREF_KEYWORD =
+            "xref\n".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] FREE_ENTRY =
+            "0000000000 65535 f \n".getBytes(StandardCharsets.US_ASCII);
+
     private XrefTableBuilder() {}
 
     /**
      * Writes the xref table for {@code objectCount} objects and returns the
      * byte offset where the {@code xref} keyword begins (the {@code startxref} value).
+     *
+     * <p>Uses a single reusable 20-byte buffer for all in-use entries to
+     * eliminate per-entry {@code String.format()} and {@code getBytes()} allocations.
      *
      * @param writer      the writer positioned immediately after the last object
      * @param offsets     offset array from {@link ObjectRegistry#getOffsets()};
@@ -31,15 +38,26 @@ public final class XrefTableBuilder {
     public static long write(PdfWriter writer, long[] offsets, int objectCount) throws IOException {
         long startxrefOffset = writer.getPosition();
 
-        writer.writeBytes("xref\n".getBytes(StandardCharsets.US_ASCII));
+        writer.writeBytes(XREF_KEYWORD);
         writer.writeBytes(("0 " + (objectCount + 1) + "\n").getBytes(StandardCharsets.US_ASCII));
+        writer.writeBytes(FREE_ENTRY);
 
-        // Free-list head: object 0, generation 65535, type 'f'
-        writer.writeBytes("0000000000 65535 f \n".getBytes(StandardCharsets.US_ASCII));
+        // Fixed suffix: " 00000 n \n"  (bytes 10–19)
+        byte[] entry = new byte[20];
+        entry[10] = ' ';
+        entry[11] = '0'; entry[12] = '0'; entry[13] = '0'; entry[14] = '0'; entry[15] = '0';
+        entry[16] = ' ';
+        entry[17] = 'n';
+        entry[18] = ' ';
+        entry[19] = '\n';
 
         for (int i = 1; i <= objectCount; i++) {
-            String entry = String.format(Locale.ROOT, "%010d 00000 n \n", offsets[i]);
-            writer.writeBytes(entry.getBytes(StandardCharsets.US_ASCII));
+            long off = offsets[i];
+            for (int d = 9; d >= 0; d--) {
+                entry[d] = (byte) ('0' + (off % 10));
+                off /= 10;
+            }
+            writer.writeBytes(entry);
         }
 
         return startxrefOffset;

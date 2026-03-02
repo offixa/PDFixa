@@ -6,7 +6,6 @@ import io.offixa.pdfixa.core.internal.PngParser;
 import io.offixa.pdfixa.core.internal.TrailerBuilder;
 import io.offixa.pdfixa.core.internal.XrefTableBuilder;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -38,6 +37,8 @@ import java.security.NoSuchAlgorithmException;
  * <p>This class is not thread-safe.
  */
 public final class PdfDocument {
+
+    private static final boolean PROFILING = Boolean.getBoolean("pdfixa.profiling");
 
     private static final byte[] HEADER_LINE1 =
             "%PDF-1.7\n".getBytes(StandardCharsets.US_ASCII);
@@ -204,12 +205,17 @@ public final class PdfDocument {
         }
         saved = true;
 
+        long t = PROFILING ? System.nanoTime() : 0;
+
         if (!contributors.isEmpty()) {
             PdfDocumentContext ctx = new PdfDocumentContext(registry, fontRegistry);
             for (PdfObjectContributor c : contributors) {
                 c.contribute(ctx);
             }
         }
+
+        long tContribute = 0;
+        if (PROFILING) { tContribute = System.nanoTime() - t; t = System.nanoTime(); }
 
         MessageDigest digest = sha256Digest();
         DigestOutputStream digestOut = new DigestOutputStream(out, digest);
@@ -219,7 +225,13 @@ public final class PdfDocument {
 
         int infoObjNum = wireBodies();
 
+        long tWireBodies = 0;
+        if (PROFILING) { tWireBodies = System.nanoTime() - t; t = System.nanoTime(); }
+
         registry.writeAll(writer);
+
+        long tWriteAll = 0;
+        if (PROFILING) { tWriteAll = System.nanoTime() - t; t = System.nanoTime(); }
 
         long startxref = XrefTableBuilder.write(
                 writer, registry.getOffsets(), registry.getObjectCount());
@@ -236,6 +248,18 @@ public final class PdfDocument {
                 startxref);
 
         writer.finish();
+
+        if (PROFILING) {
+            long tXrefTrailer = System.nanoTime() - t;
+            long total = tContribute + tWireBodies + tWriteAll + tXrefTrailer;
+            System.err.printf("[pdfixa-profile] save() breakdown:%n");
+            System.err.printf("[pdfixa-profile]   contribute:          %8.3f ms%n", tContribute / 1e6);
+            System.err.printf("[pdfixa-profile]   wireBodies+compress: %8.3f ms%n", tWireBodies / 1e6);
+            System.err.printf("[pdfixa-profile]   registry.writeAll:   %8.3f ms%n", tWriteAll / 1e6);
+            System.err.printf("[pdfixa-profile]   xref+trailer+finish: %8.3f ms%n", tXrefTrailer / 1e6);
+            System.err.printf("[pdfixa-profile]   TOTAL:               %8.3f ms%n", total / 1e6);
+        }
+
         registry.clearPostSaveState();
         pages.clear();
     }
@@ -396,19 +420,27 @@ public final class PdfDocument {
      * Compresses {@code input} using raw zlib (Deflater with {@code nowrap=false}).
      * Output is deterministic: same input always yields the same compressed bytes.
      * No timestamps or metadata are embedded.
+     *
+     * <p>Uses a direct byte array instead of BAOS to avoid the double-copy
+     * overhead of {@code ByteArrayOutputStream.toByteArray()}.
+     * Initial capacity is set to half the input size (text typically compresses
+     * well), growing on demand if the data is less compressible.
      */
     private static byte[] compress(byte[] input) {
         Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, false);
         try {
             deflater.setInput(input);
             deflater.finish();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(Math.max(64, input.length));
-            byte[] buf = new byte[4096];
+            int capacity = Math.max(128, input.length / 2);
+            byte[] out = new byte[capacity];
+            int pos = 0;
             while (!deflater.finished()) {
-                int n = deflater.deflate(buf);
-                baos.write(buf, 0, n);
+                if (pos == out.length) {
+                    out = Arrays.copyOf(out, out.length + (out.length >>> 1));
+                }
+                pos += deflater.deflate(out, pos, out.length - pos);
             }
-            return baos.toByteArray();
+            return (pos == out.length) ? out : Arrays.copyOf(out, pos);
         } finally {
             deflater.end();
         }

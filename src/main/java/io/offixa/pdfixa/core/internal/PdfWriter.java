@@ -48,6 +48,7 @@ public final class PdfWriter implements Closeable {
     private static final byte[] HEX_DIGITS = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
 
     private final CountingOutputStream out;
+    private final byte[] asciiBuf = new byte[32];
     private State state = State.WRITING;
 
     private enum State {
@@ -544,7 +545,15 @@ public final class PdfWriter implements Closeable {
 
     private void writeAscii(String s) throws IOException {
         requireWriting();
-        out.write(s.getBytes(StandardCharsets.US_ASCII));
+        int len = s.length();
+        if (len <= asciiBuf.length) {
+            for (int i = 0; i < len; i++) {
+                asciiBuf[i] = (byte) s.charAt(i);
+            }
+            out.write(asciiBuf, 0, len);
+        } else {
+            out.write(s.getBytes(StandardCharsets.US_ASCII));
+        }
     }
 
     private void writeHexByte(byte b) throws IOException {

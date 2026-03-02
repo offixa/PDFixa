@@ -3,7 +3,6 @@ package io.offixa.pdfixa.core.content;
 import io.offixa.pdfixa.core.document.FontRegistry;
 import io.offixa.pdfixa.core.internal.PdfWriter;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
@@ -338,9 +337,19 @@ public final class ContentStream {
     /**
      * Returns the accumulated operators as US-ASCII bytes.
      * Output is deterministic; no trailing whitespace is added beyond operator newlines.
+     *
+     * <p>Copies directly from the StringBuilder char buffer to a byte array,
+     * avoiding the intermediate {@code String} allocation that
+     * {@code buf.toString().getBytes()} would create. Safe because all
+     * content stream operators are 7-bit ASCII.
      */
     public byte[] toBytes() {
-        return buf.toString().getBytes(StandardCharsets.US_ASCII);
+        int len = buf.length();
+        byte[] result = new byte[len];
+        for (int i = 0; i < len; i++) {
+            result[i] = (byte) buf.charAt(i);
+        }
+        return result;
     }
 
     // ── Internal helpers ────────────────────────────────────────────────────
