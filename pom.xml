@@ -33,7 +33,7 @@
     <scm>
         <connection>scm:git:git://github.com/offixa/PDFixa.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/offixa/PDFixa.git</developerConnection>
-        <url>https://github.com/Mirzoxid/PDFixa</url>
+        <url>https://github.com/offixa/PDFixa</url>
     </scm>
 
     <properties>
@@ -52,17 +52,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <distributionManagement>
-        <repository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
 
     <build>
         <plugins>
@@ -107,6 +96,15 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.4.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                </configuration>
             </plugin>
         </plugins>
     </build>
