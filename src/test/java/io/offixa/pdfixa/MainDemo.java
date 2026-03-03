@@ -106,6 +106,36 @@ public final class MainDemo {
                 .setFont("Helvetica", 9)
                 .moveText(72, 428)
                 .showText("/Filter /FlateDecode  /DecodeParms /Predictor 15")
+                .endText()
+
+                .beginText()
+                .setFont("Helvetica-Bold", 13)
+                .moveText(72, 400)
+                .showText("Unicode Raw (UTF-16BE hex strings)")
+                .endText()
+
+                .beginText()
+                .setFont("Helvetica", 11)
+                .moveText(72, 378)
+                .showTextUnicodeRaw("Salom Dunyo!")
+                .endText()
+
+                .beginText()
+                .setFont("Helvetica", 11)
+                .moveText(72, 360)
+                .showTextUnicodeRaw("\u041F\u0440\u0438\u0432\u0435\u0442 \u043C\u0438\u0440!")
+                .endText()
+
+                .beginText()
+                .setFont("Helvetica", 11)
+                .moveText(72, 342)
+                .showTextUnicodeRaw("\u4F60\u597D\u4E16\u754C")
+                .endText()
+
+                .beginText()
+                .setFont("Helvetica", 9)
+                .moveText(72, 324)
+                .showText("(Latin, Cyrillic, CJK via showTextUnicodeRaw)")
                 .endText();
 
         PdfPage page2 = doc.addPage();

@@ -242,6 +242,51 @@ class ContentStreamTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // showTextUnicodeRaw
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void showTextUnicodeRaw_cyrillic_and_cjk() {
+        byte[] bytes = new ContentStream().showTextUnicodeRaw("\u041F\u4E16").toBytes();
+        // BOM=FEFF, П=U+041F → 041F, 世=U+4E16 → 4E16
+        assertArrayEquals(ByteUtil.ascii("<FEFF041F4E16> Tj\n"), bytes);
+    }
+
+    @Test
+    void showTextUnicodeRaw_deterministic() {
+        ContentStream cs = new ContentStream().showTextUnicodeRaw("Юникод");
+        assertArrayEquals(cs.toBytes(), cs.toBytes());
+    }
+
+    @Test
+    void showTextUnicodeRaw_empty_string() {
+        byte[] bytes = new ContentStream().showTextUnicodeRaw("").toBytes();
+        assertArrayEquals(ByteUtil.ascii("<FEFF> Tj\n"), bytes);
+    }
+
+    @Test
+    void showTextUnicodeRaw_null_throws_npe() {
+        assertThrows(NullPointerException.class,
+                () -> new ContentStream().showTextUnicodeRaw(null));
+    }
+
+    @Test
+    void showTextUnicodeRaw_ascii_text() {
+        byte[] bytes = new ContentStream().showTextUnicodeRaw("AB").toBytes();
+        assertArrayEquals(ByteUtil.ascii("<FEFF00410042> Tj\n"), bytes);
+    }
+
+    @Test
+    void showTextUnicodeRaw_uses_uppercase_hex() {
+        byte[] bytes = new ContentStream().showTextUnicodeRaw("\u00FF\uABCD").toBytes();
+        String output = new String(bytes, java.nio.charset.StandardCharsets.US_ASCII);
+        String hexPart = output.substring(output.indexOf('<') + 1, output.indexOf('>'));
+        assertEquals(hexPart, hexPart.toUpperCase(java.util.Locale.ROOT),
+                "Hex digits must be uppercase");
+        assertSeq(bytes, "<FEFF00FFABCD> Tj\n");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // toBytes / determinism
     // ─────────────────────────────────────────────────────────────────────────
 

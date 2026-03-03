@@ -91,6 +91,13 @@ class ContentStreamSealTest {
         assertThrows(IllegalStateException.class, () -> cs.showTextHex("48"));
     }
 
+    @Test
+    void showTextUnicodeRaw_throws_after_seal() {
+        ContentStream cs = sealed();
+        assertThrows(IllegalStateException.class,
+                () -> cs.showTextUnicodeRaw("Тест"));
+    }
+
     // ── Graphics operators throw after seal ──────────────────────────────────
 
     @Test

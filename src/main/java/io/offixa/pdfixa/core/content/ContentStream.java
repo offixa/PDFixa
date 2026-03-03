@@ -205,6 +205,37 @@ public final class ContentStream {
         return this;
     }
 
+    /**
+     * Appends {@code <FEFF...hex...> Tj\n} — show text encoded as a UTF-16BE
+     * hex string with a leading BOM ({@code U+FEFF}).
+     *
+     * <p>This is a minimal Unicode path that does <b>not</b> require CIDFont,
+     * ToUnicode CMaps, or font subsetting. The caller must ensure that the
+     * active font's encoding can display the glyphs.
+     *
+     * <p>Uppercase hex digits are used for deterministic, spec-friendly output.
+     *
+     * @param text the Unicode string to encode (must not be {@code null})
+     * @throws NullPointerException if {@code text} is {@code null}
+     */
+    public ContentStream showTextUnicodeRaw(String text) {
+        Objects.requireNonNull(text, "text");
+        ensureOpen();
+        buf.append('<');
+        buf.append("FEFF");
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            buf.append(HEX_DIGITS[(ch >> 12) & 0xF]);
+            buf.append(HEX_DIGITS[(ch >> 8)  & 0xF]);
+            buf.append(HEX_DIGITS[(ch >> 4)  & 0xF]);
+            buf.append(HEX_DIGITS[ ch        & 0xF]);
+        }
+        buf.append("> Tj\n");
+        return this;
+    }
+
+    private static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
+
     // ── Graphics operators ─────────────────────────────────────────────────
 
     /**
