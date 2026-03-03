@@ -6,7 +6,7 @@
 
     <groupId>io.offixa</groupId>
     <artifactId>pdfixa-core</artifactId>
-    <version>0.8.0</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>PDFixa Core</name>

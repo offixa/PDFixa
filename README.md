@@ -12,17 +12,37 @@ Byte-for-byte reproducible output. No bloat. No surprises.
 
 ---
 
+## 1.0.0 Highlights
+
+- **Stable release** — production-ready engine foundation.
+- **API frozen** for the 1.x line; public API compatibility is guaranteed.
+- **Deterministic by design** — identical bytes on every run, every platform.
+- **Unicode-aware** — UTF-16 literal support in Core; full Unicode rendering available in Pro.
+- **Zero dependencies, JPMS modular** — drop-in for modular and non-modular projects alike.
+
+---
+
 ## Why PDFixa?
 
 PDFixa Core is a deterministic PDF engine built for predictability, reproducibility and clean architecture.
+Every byte of output is fully determined by your input — no timestamps, no UUIDs, no ambient state.
+The same code always produces the same file, bit for bit.
 
 ### Key Guarantees
 
-- Byte-for-byte deterministic output
+- **Byte-for-byte deterministic output** — object numbers, xref offsets and `/ID` are stable across runs, platforms and JVM versions.
 - Zero runtime dependencies (pure JDK 17+)
-- JPMS modular design
+- JPMS modular design (`io.offixa.pdfixa.core`)
 - No hidden timestamps or UUID pollution
 - Strict lifecycle (allocate → write → seal)
+
+---
+
+## API Stability
+
+PDFixa Core 1.0.0 marks the beginning of the stable 1.x line.
+All public API surfaces are frozen: **source-compatible changes only** for future 1.x releases.
+You can depend on `pdfixa-core` in production without risk of breaking upgrades within the 1.x series.
 
 ---
 
@@ -47,14 +67,14 @@ Object numbers, xref offsets and `/ID` remain identical across runs.
 <dependency>
     <groupId>io.offixa</groupId>
     <artifactId>pdfixa-core</artifactId>
-    <version>0.8.0</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'io.offixa:pdfixa-core:0.8.0'
+implementation 'io.offixa:pdfixa-core:1.0.0'
 ```
 
 ### Example
@@ -111,8 +131,8 @@ try (var out = new FileOutputStream("hello.pdf")) {
 |:---|:---:|:---:|
 | Deterministic output | Yes | Yes |
 | Zero dependencies | Yes | Yes |
-| Unicode-aware API | Yes | Yes |
-| Full Unicode rendering | — | Yes |
+| Unicode-aware API (UTF-16 literals) | Yes | Yes |
+| Full Unicode rendering (CIDFont, ToUnicode) | — | Yes |
 | Font embedding | — | Yes |
 | Font subsetting | — | Yes |
 | Advanced layout engine | — | Yes |
