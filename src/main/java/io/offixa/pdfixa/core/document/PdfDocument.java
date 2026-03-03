@@ -205,6 +205,10 @@ public final class PdfDocument {
         }
         saved = true;
 
+        for (PdfPage page : pages) {
+            page.getContent().seal();
+        }
+
         long t = PROFILING ? System.nanoTime() : 0;
 
         if (!contributors.isEmpty()) {

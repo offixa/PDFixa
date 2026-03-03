@@ -32,7 +32,7 @@ public final class PdfPage {
     PdfPage(int pageObjNum, int contentsObjNum, FontRegistry fontRegistry) {
         this.pageObjNum     = pageObjNum;
         this.contentsObjNum = contentsObjNum;
-        this.content        = new ContentStream(fontRegistry);
+        this.content        = new ContentStream(fontRegistry::getAlias);
     }
 
     /**

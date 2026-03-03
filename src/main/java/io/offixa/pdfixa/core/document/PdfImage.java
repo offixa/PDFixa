@@ -24,12 +24,12 @@ public final class PdfImage {
     }
 
     /** Returns the resource alias used in content streams, e.g. {@code "Im1"}. */
-    public String getAlias() {
+    String getAlias() {
         return alias;
     }
 
     /** Returns the indirect-object number for this image's XObject stream. */
-    public int getObjectNumber() {
+    int getObjectNumber() {
         return objectNumber;
     }
 

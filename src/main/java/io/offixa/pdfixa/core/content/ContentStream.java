@@ -1,12 +1,12 @@
 package io.offixa.pdfixa.core.content;
 
-import io.offixa.pdfixa.core.document.FontRegistry;
 import io.offixa.pdfixa.core.internal.PdfWriter;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 /**
  * Minimal, safe builder for PDF content stream operators.
@@ -18,6 +18,10 @@ import java.util.Set;
  * <p>Number formatting delegates to {@link PdfWriter#formatReal(double)} — no
  * duplicate logic.
  *
+ * <p>Once {@link #seal() sealed}, all mutating operations throw
+ * {@link IllegalStateException}. Read-only operations ({@link #toBytes()},
+ * {@link #getUsedFontAliases()}) remain available.
+ *
  * <p>This class is not thread-safe.
  */
 public final class ContentStream {
@@ -25,41 +29,68 @@ public final class ContentStream {
     private final StringBuilder buf = new StringBuilder();
 
     /**
-     * Optional document-level font registry.  When set, {@link #setFont} resolves
+     * Optional font-name resolver.  When set, {@link #setFont} resolves
      * font names to their aliases and tracks which aliases this stream uses.
      * When {@code null} the raw name is written verbatim (standalone / test use).
      */
-    private final FontRegistry fontRegistry;
+    private final UnaryOperator<String> fontResolver;
 
-    /** Ordered set of font aliases used by this stream (populated only with a registry). */
+    /** Ordered set of font aliases used by this stream (populated only with a resolver). */
     private final Set<String> usedAliases = new LinkedHashSet<>();
+
+    private boolean sealed;
 
     // ── Constructors ───────────────────────────────────────────────────────
 
     /**
-     * Creates a standalone stream with no font registry.
+     * Creates a standalone stream with no font resolver.
      * {@link #setFont} writes the supplied name verbatim.
      * Suitable for isolated unit tests and low-level usage.
      */
     public ContentStream() {
-        this.fontRegistry = null;
+        this.fontResolver = null;
     }
 
     /**
-     * Creates a stream wired to {@code fontRegistry}.
+     * Creates a stream wired to {@code fontResolver}.
      * {@link #setFont} will resolve font names to aliases and track usage.
-     * Called by {@link io.offixa.pdfixa.core.document.PdfPage}.
      *
-     * @param fontRegistry the document-level registry; must not be {@code null}
+     * @param fontResolver maps a font name (e.g. {@code "Helvetica"}) to its
+     *                     resource alias (e.g. {@code "F1"}); must not be {@code null}
      */
-    public ContentStream(FontRegistry fontRegistry) {
-        this.fontRegistry = Objects.requireNonNull(fontRegistry, "fontRegistry");
+    public ContentStream(UnaryOperator<String> fontResolver) {
+        this.fontResolver = Objects.requireNonNull(fontResolver, "fontResolver");
+    }
+
+    // ── Seal lifecycle ────────────────────────────────────────────────────
+
+    /**
+     * Seals this stream, preventing any further mutating operations.
+     * Subsequent calls to drawing/text/graphics methods will throw
+     * {@link IllegalStateException}. Idempotent.
+     */
+    public void seal() {
+        this.sealed = true;
+    }
+
+    /**
+     * Returns {@code true} if this stream has been {@link #seal() sealed}.
+     */
+    public boolean isSealed() {
+        return sealed;
+    }
+
+    private void ensureOpen() {
+        if (sealed) {
+            throw new IllegalStateException(
+                    "ContentStream has been sealed and cannot be modified");
+        }
     }
 
     /**
      * Returns an unmodifiable, insertion-ordered view of all font aliases
      * referenced by {@link #setFont} calls on this stream.
-     * Empty when no registry is attached.
+     * Empty when no resolver is attached.
      */
     public Set<String> getUsedFontAliases() {
         return Collections.unmodifiableSet(usedAliases);
@@ -69,12 +100,14 @@ public final class ContentStream {
 
     /** Appends {@code BT\n} — begin text object. */
     public ContentStream beginText() {
+        ensureOpen();
         buf.append("BT\n");
         return this;
     }
 
     /** Appends {@code ET\n} — end text object. */
     public ContentStream endText() {
+        ensureOpen();
         buf.append("ET\n");
         return this;
     }
@@ -82,21 +115,22 @@ public final class ContentStream {
     /**
      * Appends a {@code Tf} operator for the given font name and size.
      *
-     * <p>Behaviour depends on whether a {@link FontRegistry} has been attached:
+     * <p>Behaviour depends on whether a font resolver has been attached:
      * <ul>
-     *   <li><b>With registry:</b> resolves {@code name} to its alias (e.g. {@code F1}),
+     *   <li><b>With resolver:</b> resolves {@code name} to its alias (e.g. {@code F1}),
      *       records the alias in the used-set, and writes {@code /F1 <size> Tf\n}.
-     *   <li><b>Without registry:</b> writes {@code /<name> <size> Tf\n} verbatim —
+     *   <li><b>Without resolver:</b> writes {@code /<name> <size> Tf\n} verbatim —
      *       preserving backward-compatible behaviour for standalone / test use.
      * </ul>
      *
-     * @param name font name (Base-14) or alias when registry is absent
+     * @param name font name (Base-14) or alias when resolver is absent
      * @param size point size
      */
     public ContentStream setFont(String name, double size) {
+        ensureOpen();
         String token;
-        if (fontRegistry != null) {
-            token = fontRegistry.getAlias(name);
+        if (fontResolver != null) {
+            token = fontResolver.apply(name);
             usedAliases.add(token);
         } else {
             token = name;
@@ -111,6 +145,7 @@ public final class ContentStream {
      * Appends {@code <x> <y> Td\n} — move text position.
      */
     public ContentStream moveText(double x, double y) {
+        ensureOpen();
         buf.append(PdfWriter.formatReal(x))
            .append(' ').append(PdfWriter.formatReal(y))
            .append(" Td\n");
@@ -131,6 +166,7 @@ public final class ContentStream {
      * @throws IllegalArgumentException if any character is outside Latin-1 (> U+00FF)
      */
     public ContentStream showText(String text) {
+        ensureOpen();
         buf.append('(');
         for (int i = 0; i < text.length(); i++) {
             char ch = text.charAt(i);
@@ -164,6 +200,7 @@ public final class ContentStream {
      * @param hexString hex-encoded byte sequence (without angle brackets)
      */
     public ContentStream showTextHex(String hexString) {
+        ensureOpen();
         buf.append('<').append(hexString).append("> Tj\n");
         return this;
     }
@@ -174,6 +211,7 @@ public final class ContentStream {
      * Appends {@code <x> <y> m\n} — moveto.
      */
     public ContentStream moveTo(double x, double y) {
+        ensureOpen();
         buf.append(PdfWriter.formatReal(x))
            .append(' ').append(PdfWriter.formatReal(y))
            .append(" m\n");
@@ -184,6 +222,7 @@ public final class ContentStream {
      * Appends {@code <x> <y> l\n} — lineto.
      */
     public ContentStream lineTo(double x, double y) {
+        ensureOpen();
         buf.append(PdfWriter.formatReal(x))
            .append(' ').append(PdfWriter.formatReal(y))
            .append(" l\n");
@@ -194,6 +233,7 @@ public final class ContentStream {
      * Appends {@code S\n} — stroke current path.
      */
     public ContentStream stroke() {
+        ensureOpen();
         buf.append("S\n");
         return this;
     }
@@ -202,6 +242,7 @@ public final class ContentStream {
      * Appends {@code <x> <y> <w> <h> re\n} — append rectangle to path.
      */
     public ContentStream rectangle(double x, double y, double w, double h) {
+        ensureOpen();
         buf.append(PdfWriter.formatReal(x))
            .append(' ').append(PdfWriter.formatReal(y))
            .append(' ').append(PdfWriter.formatReal(w))
@@ -214,6 +255,7 @@ public final class ContentStream {
      * Appends {@code f\n} — fill current path using non-zero winding rule.
      */
     public ContentStream fill() {
+        ensureOpen();
         buf.append("f\n");
         return this;
     }
@@ -222,6 +264,7 @@ public final class ContentStream {
      * Appends {@code <w> w\n} — set line width.
      */
     public ContentStream setLineWidth(double w) {
+        ensureOpen();
         buf.append(PdfWriter.formatReal(w)).append(" w\n");
         return this;
     }
@@ -237,6 +280,7 @@ public final class ContentStream {
      * @throws IllegalArgumentException if any component is outside [0, 1]
      */
     public ContentStream setFillColor(double r, double g, double b) {
+        ensureOpen();
         requireUnit(r, "r");
         requireUnit(g, "g");
         requireUnit(b, "b");
@@ -256,6 +300,7 @@ public final class ContentStream {
      * @throws IllegalArgumentException if any component is outside [0, 1]
      */
     public ContentStream setStrokeColor(double r, double g, double b) {
+        ensureOpen();
         requireUnit(r, "r");
         requireUnit(g, "g");
         requireUnit(b, "b");
@@ -273,6 +318,7 @@ public final class ContentStream {
      * @throws IllegalArgumentException if {@code gray} is outside [0, 1]
      */
     public ContentStream setGray(double gray) {
+        ensureOpen();
         requireUnit(gray, "gray");
         buf.append(PdfWriter.formatReal(gray)).append(" g\n");
         return this;
@@ -285,6 +331,7 @@ public final class ContentStream {
      * @throws IllegalArgumentException if {@code gray} is outside [0, 1]
      */
     public ContentStream setGrayStroke(double gray) {
+        ensureOpen();
         requireUnit(gray, "gray");
         buf.append(PdfWriter.formatReal(gray)).append(" G\n");
         return this;
@@ -294,12 +341,14 @@ public final class ContentStream {
 
     /** Appends {@code q\n} — save the current graphics state. */
     public ContentStream saveState() {
+        ensureOpen();
         buf.append("q\n");
         return this;
     }
 
     /** Appends {@code Q\n} — restore the most recently saved graphics state. */
     public ContentStream restoreState() {
+        ensureOpen();
         buf.append("Q\n");
         return this;
     }
@@ -312,6 +361,7 @@ public final class ContentStream {
      */
     public ContentStream concatMatrix(double a, double b, double c,
                                       double d, double e, double f) {
+        ensureOpen();
         buf.append(PdfWriter.formatReal(a))
            .append(' ').append(PdfWriter.formatReal(b))
            .append(' ').append(PdfWriter.formatReal(c))
@@ -328,6 +378,7 @@ public final class ContentStream {
      * @param name XObject resource name without the leading slash, e.g. {@code "Im1"}
      */
     public ContentStream doXObject(String name) {
+        ensureOpen();
         buf.append('/').append(name).append(" Do\n");
         return this;
     }
@@ -342,6 +393,8 @@ public final class ContentStream {
      * avoiding the intermediate {@code String} allocation that
      * {@code buf.toString().getBytes()} would create. Safe because all
      * content stream operators are 7-bit ASCII.
+     *
+     * <p>This method is available even after {@link #seal()}.
      */
     public byte[] toBytes() {
         int len = buf.length();

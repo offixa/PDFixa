@@ -77,4 +77,46 @@ public interface PdfObjectOutput {
      * @param ttfBytes raw TrueType font bytes
      */
     void beginFontFileStream(byte[] ttfBytes) throws IOException;
+
+    // ── Forward-compatible default methods ──────────────────────────────────
+    // Added in 0.9.0 so that future expansion does not break existing
+    // PdfObjectWriter lambdas or third-party PdfObjectOutput implementations.
+
+    /**
+     * Writes raw bytes verbatim into the object body.
+     *
+     * @param data bytes to write
+     */
+    default void rawBytes(byte[] data) throws IOException {
+        throw new UnsupportedOperationException(
+                "rawBytes is not supported by this PdfObjectOutput implementation");
+    }
+
+    /**
+     * Writes a PDF boolean token ({@code true} / {@code false}).
+     *
+     * @param value the boolean value
+     */
+    default void bool(boolean value) throws IOException {
+        throw new UnsupportedOperationException(
+                "bool is not supported by this PdfObjectOutput implementation");
+    }
+
+    /**
+     * Writes the PDF {@code null} object.
+     */
+    default void nullValue() throws IOException {
+        throw new UnsupportedOperationException(
+                "nullValue is not supported by this PdfObjectOutput implementation");
+    }
+
+    /**
+     * Writes a PDF comment ({@code % text}).
+     *
+     * @param text comment text (without the leading {@code %})
+     */
+    default void comment(String text) throws IOException {
+        throw new UnsupportedOperationException(
+                "comment is not supported by this PdfObjectOutput implementation");
+    }
 }

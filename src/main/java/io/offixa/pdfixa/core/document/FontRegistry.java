@@ -21,7 +21,7 @@ import java.util.Map;
  *
  * <p>This class is not thread-safe.
  */
-public final class FontRegistry {
+final class FontRegistry {
 
     private final Map<String, String> nameToAlias = new LinkedHashMap<>();
     private final Map<String, String> aliasToName = new LinkedHashMap<>();

@@ -113,12 +113,31 @@ class ImageXObjectTest {
 
     @Test
     void pdfImage_accessors_return_registered_values() {
-        // Construct directly to test the handle without a full document.
         PdfImage img = new PdfImage("Im3", 7, 320, 240);
         assertEquals("Im3", img.getAlias());
         assertEquals(7,     img.getObjectNumber());
         assertEquals(320,   img.getWidth());
         assertEquals(240,   img.getHeight());
+    }
+
+    @Test
+    void pdfImage_width_height_are_public() throws Exception {
+        var getWidth  = PdfImage.class.getDeclaredMethod("getWidth");
+        var getHeight = PdfImage.class.getDeclaredMethod("getHeight");
+        assertTrue(java.lang.reflect.Modifier.isPublic(getWidth.getModifiers()),
+                "getWidth() must be public");
+        assertTrue(java.lang.reflect.Modifier.isPublic(getHeight.getModifiers()),
+                "getHeight() must be public");
+    }
+
+    @Test
+    void pdfImage_alias_and_objectNumber_are_not_public() throws Exception {
+        var getAlias = PdfImage.class.getDeclaredMethod("getAlias");
+        var getObjNo = PdfImage.class.getDeclaredMethod("getObjectNumber");
+        assertFalse(java.lang.reflect.Modifier.isPublic(getAlias.getModifiers()),
+                "getAlias() must not be public");
+        assertFalse(java.lang.reflect.Modifier.isPublic(getObjNo.getModifiers()),
+                "getObjectNumber() must not be public");
     }
 
     // ── ImageRegistry unit tests ──────────────────────────────────────────────
