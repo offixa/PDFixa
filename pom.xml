@@ -88,6 +88,7 @@
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
+                    <keyname>25E6E15AAFBA4DCD</keyname>
                     <passphrase>${env.GPG_PASSPHRASE}</passphrase>
                     <gpgArguments>
                         <arg>--pinentry-mode</arg>
