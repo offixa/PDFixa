@@ -1,6 +1,6 @@
 # PDFixa Core
 
-**Deterministic, zero-dependency PDF engine foundation for Java.**
+**Deterministic, zero-dependency PDF engine for Java.** \
 Byte-for-byte reproducible output. No bloat. No surprises.
 
 [![Java 17+](https://img.shields.io/badge/Java-17+-blue?logo=openjdk&logoColor=white)](#)
@@ -10,56 +10,37 @@ Byte-for-byte reproducible output. No bloat. No surprises.
 [![Deterministic](https://img.shields.io/badge/Output-Deterministic-success)](#)
 [![Maven Central](https://img.shields.io/maven-central/v/io.offixa/pdfixa-core?label=Maven%20Central&color=blue)](https://central.sonatype.com/artifact/io.offixa/pdfixa-core)
 
----
-
-## 1.0.0 Highlights
-
-- **Stable release** — production-ready engine foundation.
-- **API frozen** for the 1.x line; public API compatibility is guaranteed.
-- **Deterministic by design** — identical bytes on every run, every platform.
-- **Unicode-aware** — UTF-16 literal support in Core; full Unicode rendering available in Pro.
-- **Zero dependencies, JPMS modular** — drop-in for modular and non-modular projects alike.
+If you find PDFixa useful, consider ⭐ starring the repository.
 
 ---
+## Quick Start
 
-## Why PDFixa?
-
-PDFixa Core is a deterministic PDF engine built for predictability, reproducibility and clean architecture.
-Every byte of output is fully determined by your input — no timestamps, no UUIDs, no ambient state.
-The same code always produces the same file, bit for bit.
-
-### Key Guarantees
-
-- **Byte-for-byte deterministic output** — object numbers, xref offsets and `/ID` are stable across runs, platforms and JVM versions.
-- Zero runtime dependencies (pure JDK 17+)
-- JPMS modular design (`io.offixa.pdfixa.core`)
-- No hidden timestamps or UUID pollution
-- Strict lifecycle (allocate → write → seal)
-
----
-
-## API Stability
-
-PDFixa Core 1.0.0 marks the beginning of the stable 1.x line.
-All public API surfaces are frozen: **source-compatible changes only** for future 1.x releases.
-You can depend on `pdfixa-core` in production without risk of breaking upgrades within the 1.x series.
-
----
-
-## Determinism Example
+Generate a deterministic PDF in a few lines:
 
 ```java
-byte[] first = generate();
-byte[] second = generate();
+PdfDocument doc = new PdfDocument();
+PdfPage page = doc.addPage();
 
-assert Arrays.equals(first, second); // Always true
+page.drawTextBox(
+    72, 760, 468, 16,
+    "Helvetica-Bold", 18,
+    "Hello from PDFixa!"
+);
+
+try (var out = new FileOutputStream("hello.pdf")) {
+    doc.save(out);
+}
 ```
 
-Object numbers, xref offsets and `/ID` remain identical across runs.
+Output:
+
+```
+hello.pdf
+```
 
 ---
 
-## Quick Start
+## Installation
 
 ### Maven
 
@@ -77,22 +58,50 @@ Object numbers, xref offsets and `/ID` remain identical across runs.
 implementation 'io.offixa:pdfixa-core:1.0.0'
 ```
 
-### Example
+---
+
+## 1.0.0 Highlights
+
+* **Stable release** — production-ready engine foundation.
+* **API frozen** for the 1.x line.
+* **Deterministic by design** — identical bytes on every run.
+* **Unicode-aware API** — UTF-16 literal support.
+* **Zero dependencies** — pure Java 17+.
+* **JPMS modular design**.
+
+---
+
+## Why PDFixa?
+
+PDFixa Core is a deterministic PDF engine built for **predictability, reproducibility and clean architecture**.
+
+Every byte of output is determined entirely by your input.
+
+No timestamps.
+No UUIDs.
+No hidden runtime state.
+
+The same code always produces the same file — **bit for bit**.
+
+---
+
+## Determinism Example
 
 ```java
-PdfDocument doc = new PdfDocument();
-PdfPage page = doc.addPage();
+byte[] first = generate();
+byte[] second = generate();
 
-page.drawTextBox(
-    72, 760, 468, 16,
-    "Helvetica-Bold", 18,
-    "Hello from PDFixa Core!"
-);
-
-try (var out = new FileOutputStream("hello.pdf")) {
-    doc.save(out);
-}
+assert Arrays.equals(first, second); // always true
 ```
+
+Object numbers, cross-reference offsets and document `/ID` remain identical across runs.
+
+This makes PDFixa ideal for:
+
+* reproducible builds
+* document pipelines
+* deterministic testing
+* compliance workflows
 
 ---
 
@@ -100,51 +109,87 @@ try (var out = new FileOutputStream("hello.pdf")) {
 
 ### Text
 
-- Base-14 fonts
-- Word wrapping
-- drawTextBox API
-- Unicode-aware API (UTF-16 literal support)
+* Base-14 fonts
+* Word wrapping
+* `drawTextBox` API
+* Unicode-aware API (UTF-16 literals)
 
 ### Graphics
 
-- Paths and shapes
-- Fill & stroke
-- RGB & grayscale
+* Paths and shapes
+* Fill & stroke
+* RGB and grayscale colors
 
 ### Images
 
-- JPEG embedding
-- PNG (8-bit RGB)
+* JPEG embedding
+* PNG (8-bit RGB)
 
 ### Document
 
-- Standard page sizes
-- Metadata builder
-- SHA-256 deterministic `/ID`
-- PDF 1.7 compliant
+* Standard page sizes
+* Metadata builder
+* Deterministic SHA-256 `/ID`
+* PDF 1.7 compliant output
+
+---
+
+## Examples
+
+See full working examples:\
+👉 https://github.com/offixa/pdfixa-examples
+
+Example projects include:
+* invoice-generator
+* report-generator
+* multi-language-pdf
+* batch-pdf
+* images-demo
+
+Each example contains runnable code and generated PDFs.
 
 ---
 
 ## Core vs Pro
 
-| Capability | Core | Pro |
-|:---|:---:|:---:|
-| Deterministic output | Yes | Yes |
-| Zero dependencies | Yes | Yes |
-| Unicode-aware API (UTF-16 literals) | Yes | Yes |
-| Full Unicode rendering (CIDFont, ToUnicode) | — | Yes |
-| Font embedding | — | Yes |
-| Font subsetting | — | Yes |
-| Advanced layout engine | — | Yes |
+| Capability                                  | Core | Pro |
+| ------------------------------------------- | ---- | --- |
+| Deterministic output                        | ✅    | ✅   |
+| Zero dependencies                           | ✅    | ✅   |
+| Unicode-aware API                           | ✅    | ✅   |
+| Full Unicode rendering (CIDFont, ToUnicode) | —    | ✅   |
+| Font embedding                              | —    | ✅   |
+| Font subsetting                             | —    | ✅   |
+| Advanced layout engine                      | —    | ✅   |
 
-> **[Get PDFixa Pro → offixa.io](https://offixa.io)**
+Learn more about **PDFixa Pro**:
+
+https://offixa.io/pdfixa-pro
+
+---
+
+## Documentation
+
+Full documentation:
+
+https://offixa.io/pdfixa
+
+Documentation sections include:
+
+* Getting Started
+* Pages
+* Fonts
+* Images
+* Metadata
+* Deterministic output
 
 ---
 
 ## Requirements
 
-Java 17+
+Java **17+**
+
+---
 
 ## License
-
 Apache License 2.0
