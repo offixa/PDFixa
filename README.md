@@ -220,20 +220,99 @@ For most tasks you only need `PdfDocument` and `PdfPage`.
 | Font subsetting | — | ✅ |
 | Advanced layout engine | — | ✅ |
 
-Learn more about **PDFixa Pro**: https://offixa.io/pdfixa-pro
+PDFixa Pro is a commercial extension built on top of Core. See the [comparison table above](#core-vs-pro).
 
 ---
 
 ## Documentation
 
-Full documentation: https://offixa.io/pdfixa
+### Getting Started
 
-* Getting Started
-* Pages & Page Sizes
-* Fonts (Base-14)
-* Images (JPEG & PNG)
-* Metadata
-* Deterministic Output
+Add the dependency, create a `PdfDocument`, add a page, draw content, save:
+
+```java
+PdfDocument doc = new PdfDocument();
+PdfPage page = doc.addPage();
+
+page.drawTextBox(72, 760, 468, 16, "Helvetica-Bold", 18, "Hello from PDFixa!");
+
+try (var out = new FileOutputStream("output.pdf")) {
+    doc.save(out);
+}
+```
+
+### Pages and Page Sizes
+
+```java
+// Standard sizes
+PdfPage a4     = doc.addPage(PdfPageSize.A4);
+PdfPage letter = doc.addPage(PdfPageSize.LETTER);
+PdfPage a3     = doc.addPage(PdfPageSize.A3);
+
+// Custom size (width x height in points, 1pt = 1/72 inch)
+PdfPage custom = doc.addPage(new PdfPageSize(595, 842));
+```
+
+### Fonts (Base-14)
+
+PDFixa supports the 14 built-in PDF fonts — no embedding required.
+
+| Font name | Variants |
+|---|---|
+| `Helvetica` | `Helvetica-Bold`, `Helvetica-Oblique`, `Helvetica-BoldOblique` |
+| `Times-Roman` | `Times-Bold`, `Times-Italic`, `Times-BoldItalic` |
+| `Courier` | `Courier-Bold`, `Courier-Oblique`, `Courier-BoldOblique` |
+| `Symbol` | — |
+| `ZapfDingbats` | — |
+
+```java
+page.drawTextBox(72, 700, 400, 14, "Times-Bold", 14, "Section title");
+page.drawTextBox(72, 680, 400, 12, "Helvetica",  11, "Body paragraph text.");
+```
+
+### Images (JPEG and PNG)
+
+```java
+// Embed a JPEG (DCTDecode — zero re-compression)
+byte[] jpegBytes = Files.readAllBytes(Path.of("photo.jpg"));
+page.drawImage(jpegBytes, PdfImageType.JPEG, 72, 500, 200, 150);
+
+// Embed a PNG (8-bit RGB, FlateDecode)
+byte[] pngBytes = Files.readAllBytes(Path.of("logo.png"));
+page.drawImage(pngBytes, PdfImageType.PNG, 72, 300, 100, 100);
+```
+
+Parameters: `(imageBytes, type, x, y, width, height)` — coordinates in points from the bottom-left.
+
+### Metadata
+
+```java
+PdfDocument doc = new PdfDocument(
+    PdfInfo.builder()
+        .title("Q1 Sales Report")
+        .author("Offixa")
+        .subject("Monthly analytics")
+        .keywords("sales, report, 2026")
+        .build()
+);
+```
+
+### Deterministic Output
+
+PDFixa guarantees byte-for-byte identical output for identical input:
+
+```java
+byte[] first  = generatePdf();
+byte[] second = generatePdf();
+
+assert Arrays.equals(first, second); // always true
+```
+
+What is fixed across runs:
+- PDF object numbers and byte offsets
+- Document `/ID` — SHA-256 hash of content
+- No embedded timestamps
+- No random UUIDs or runtime state
 
 ---
 
