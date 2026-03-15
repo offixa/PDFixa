@@ -3,6 +3,7 @@
 **Deterministic, zero-dependency PDF engine for Java.** \
 Byte-for-byte reproducible output. No bloat. No surprises.
 
+[![CI](https://img.shields.io/github/actions/workflow/status/offixa/PDFixa/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/offixa/PDFixa/actions)
 [![Java 17+](https://img.shields.io/badge/Java-17+-blue?logo=openjdk&logoColor=white)](#)
 [![Dependencies: 0](https://img.shields.io/badge/Dependencies-0-brightgreen)](#)
 [![JPMS](https://img.shields.io/badge/JPMS-modular-blueviolet)](#)
