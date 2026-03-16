@@ -71,6 +71,28 @@ class Base14FontMetricsTest {
         assertEquals(7.22, METRICS.textWidthPt("A", "Times-Roman", 10), 1e-9);
     }
 
+    @Test
+    void helvetica_extended_latin1_uses_afm_widths() {
+        // Helvetica é (0xE9) = 556 units; at size 10 → 5.56 pt
+        assertEquals(5.56, METRICS.textWidthPt("\u00E9", "Helvetica", 10), 1e-9);
+        // Helvetica Æ (0xC6) = 1000 units; at size 10 → 10.0 pt
+        assertEquals(10.0, METRICS.textWidthPt("\u00C6", "Helvetica", 10), 1e-9);
+    }
+
+    @Test
+    void timesRoman_extended_latin1_uses_afm_widths() {
+        // Times-Roman é (0xE9) = 444 units; at size 10 → 4.44 pt
+        assertEquals(4.44, METRICS.textWidthPt("\u00E9", "Times-Roman", 10), 1e-9);
+        // Times-Roman Æ (0xC6) = 889 units; at size 10 → 8.89 pt
+        assertEquals(8.89, METRICS.textWidthPt("\u00C6", "Times-Roman", 10), 1e-9);
+    }
+
+    @Test
+    void courier_extended_latin1_remains_monospaced() {
+        assertEquals(6.0, METRICS.textWidthPt("\u00E9", "Courier", 10), 1e-9);
+        assertEquals(6.0, METRICS.textWidthPt("\u00FF", "Courier", 10), 1e-9);
+    }
+
     // ── Error handling ────────────────────────────────────────────────────────
 
     @Test

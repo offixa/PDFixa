@@ -1,6 +1,7 @@
 package io.offixa.pdfixa.core.content;
 
 import io.offixa.pdfixa.core.internal.PdfWriter;
+import io.offixa.pdfixa.core.text.WinAnsiEncoding;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -163,19 +164,15 @@ public final class ContentStream {
      *   <li>Control characters: {@code \n \r \t \b \f}
      * </ul>
      *
-     * @throws IllegalArgumentException if any character is outside Latin-1 (> U+00FF)
+     * @throws IllegalArgumentException if any character cannot be encoded in WinAnsi
      */
     public ContentStream showText(String text) {
         ensureOpen();
         buf.append('(');
         for (int i = 0; i < text.length(); i++) {
-            char ch = text.charAt(i);
-            if (ch > 0xFF) {
-                throw new IllegalArgumentException(
-                        "showText: character U+" + Integer.toHexString(ch).toUpperCase()
-                        + " at index " + i + " is outside Latin-1 range");
-            }
-            switch (ch) {
+            byte encoded = WinAnsiEncoding.encode(text.charAt(i));
+            int b = encoded & 0xFF;
+            switch (b) {
                 case '('  -> buf.append("\\(");
                 case ')'  -> buf.append("\\)");
                 case '\\' -> buf.append("\\\\");
@@ -184,7 +181,7 @@ public final class ContentStream {
                 case '\t' -> buf.append("\\t");
                 case '\b' -> buf.append("\\b");
                 case '\f' -> buf.append("\\f");
-                default   -> buf.append(ch);
+                default   -> buf.append((char) b);
             }
         }
         buf.append(") Tj\n");

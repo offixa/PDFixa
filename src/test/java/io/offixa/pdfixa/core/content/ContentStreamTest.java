@@ -241,6 +241,14 @@ class ContentStreamTest {
         assertDoesNotThrow(() -> new ContentStream().showText("\u00FF"));
     }
 
+    @Test
+    void showText_rejects_character_not_defined_in_winansi() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> new ContentStream().showText("\u0080"));
+        assertTrue(ex.getMessage().contains("U+80"),
+                "Exception message should name the offending code point");
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // showTextUnicodeRaw
     // ─────────────────────────────────────────────────────────────────────────

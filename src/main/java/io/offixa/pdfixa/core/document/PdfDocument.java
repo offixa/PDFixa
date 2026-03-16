@@ -388,6 +388,8 @@ public final class PdfDocument {
                             w.writeName("Subtype");  w.writeSpace(); w.writeName("Type1");
                             w.writeSpace();
                             w.writeName("BaseFont"); w.writeSpace(); w.writeName(baseFontName);
+                            w.writeSpace();
+                            w.writeName("Encoding"); w.writeSpace(); w.writeName("WinAnsiEncoding");
                             w.endDictionary();
                         }
                     }

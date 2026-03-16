@@ -39,7 +39,7 @@ class CanonicalDeterminismTest {
     private static final PdfPageSize CUSTOM_PAGE = new PdfPageSize(700, 500);
 
     private static final String EXPECTED_SHA256 =
-            "042051ed6a438ce1a99760363ab1eb5ffb4b9f87e684d26f8fefb545037742dd";
+            "7b21cad10cb08432ddf41045ac798e64e1629b368e2b56ba3fcdf75afb238ee7";
 
     /**
      * Builds the canonical PDF exercising all major feature paths.
