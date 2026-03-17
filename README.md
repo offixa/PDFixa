@@ -55,17 +55,24 @@ hello.pdf
 <dependency>
     <groupId>io.offixa</groupId>
     <artifactId>pdfixa-core</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'io.offixa:pdfixa-core:1.0.0'
+implementation 'io.offixa:pdfixa-core:1.1.0'
 ```
 
 ---
+
+## What's New in 1.1.0
+
+* **Latin-1 support** — `é`, `ñ`, `ü`, `ö`, `ç` and the full `U+0000–U+00FF` range work out of the box.
+* **WinAnsiEncoding** declared in all Base-14 font dictionaries — compliant, zero-config.
+* **Extended font metrics** — Helvetica and Times-Roman now carry correct Adobe AFM widths for all 256 WinAnsi code points.
+* **Determinism preserved** — layout and byte output remain bit-for-bit reproducible.
 
 ## 1.0.0 Highlights
 
@@ -132,6 +139,7 @@ This makes PDFixa ideal for:
 ### Text
 
 * Base-14 fonts (Helvetica, Times, Courier and variants)
+* **Latin-1 support** — `WinAnsiEncoding` for accented characters (`é`, `ñ`, `ü`, `ö`, `ç`, full `U+0000–U+00FF`)
 * Word wrapping with `drawTextBox`
 * Unicode-aware API (UTF-16 hex literals via `showTextUnicodeRaw`)
 
@@ -157,7 +165,7 @@ This makes PDFixa ideal for:
 
 ## Examples
 
-**10 runnable example projects** covering real-world use cases — from hello world to multi-page paginated reports and Spring Boot HTTP delivery.
+**11 runnable example projects** covering real-world use cases — from hello world to multi-page paginated reports and Spring Boot HTTP delivery.
 
 👉 **[github.com/offixa/pdfixa-examples](https://github.com/offixa/pdfixa-examples)**
 
@@ -173,6 +181,7 @@ This makes PDFixa ideal for:
 | [table-report](https://github.com/offixa/pdfixa-examples/tree/main/table-report) | Analytics report with tabular data | `mvn -pl table-report exec:java` |
 | [pagination-table-report](https://github.com/offixa/pdfixa-examples/tree/main/pagination-table-report) | Multi-page report with auto-pagination and repeated headers | `mvn -pl pagination-table-report exec:java` |
 | [spring-boot-download](https://github.com/offixa/pdfixa-examples/tree/main/spring-boot-download) | Spring Boot endpoint that returns PDF on `GET` | `mvn -pl spring-boot-download spring-boot:run` |
+| [latin1-demo](https://github.com/offixa/pdfixa-examples/tree/main/latin1-demo) ⭐ **New in 1.1.0** | Latin-1 characters with WinAnsiEncoding — accented text across French, Spanish, Turkish, German and more | `mvn -pl latin1-demo exec:java` |
 
 ### Visual previews
 
@@ -182,6 +191,8 @@ This makes PDFixa ideal for:
 | hello-world | invoice-generator | table-invoice |
 | ![table-report](https://raw.githubusercontent.com/offixa/pdfixa-examples/main/previews/table-report.png) | ![pagination-table-report](https://raw.githubusercontent.com/offixa/pdfixa-examples/main/previews/pagination-table-report.png) | ![spring-boot-download](https://raw.githubusercontent.com/offixa/pdfixa-examples/main/previews/spring-boot-download.png) |
 | table-report | pagination-table-report | spring-boot-download |
+| ![latin1-demo](https://raw.githubusercontent.com/offixa/pdfixa-examples/main/previews/latin1-demo.png) | ![multi-language-pdf](https://raw.githubusercontent.com/offixa/pdfixa-examples/main/previews/multi-language-pdf.png) | |
+| latin1-demo | multi-language-pdf | |
 
 > Each example is self-contained and runnable in under a minute. Clone, run, open the PDF.
 
@@ -216,6 +227,7 @@ For most tasks you only need `PdfDocument` and `PdfPage`.
 | Deterministic output | ✅ | ✅ |
 | Zero dependencies | ✅ | ✅ |
 | Unicode-aware API | ✅ | ✅ |
+| Latin-1 / WinAnsiEncoding (`U+0000–U+00FF`) | ✅ | ✅ |
 | Full Unicode rendering (CIDFont, ToUnicode) | — | ✅ |
 | Font embedding | — | ✅ |
 | Font subsetting | — | ✅ |
@@ -297,6 +309,32 @@ PdfDocument doc = new PdfDocument(
         .build()
 );
 ```
+
+### Latin-1 Characters (WinAnsiEncoding)
+
+PDFixa 1.1.0 supports accented Latin characters out of the box — no configuration needed:
+
+```java
+page.getContent()
+    .beginText()
+    .setFont("Helvetica", 12)
+    .moveText(72, 700)
+    .showText("café résumé niño über könnten français")
+    .endText();
+```
+
+```java
+// Works with drawTextBox too
+page.drawTextBox(72, 700, 450, 14, "Times-Roman", 11,
+    "Résumé — Español — Türkçe — Français — Português");
+```
+
+Supported range: `U+0000–U+00FF` (full WinAnsi / Latin-1).
+Characters in `U+0080–U+009F` (C1 control range) are rejected — consistent with the WinAnsi standard.
+
+> Full Unicode (Cyrillic, Arabic, CJK) is available in **PDFixa Pro**.
+
+---
 
 ### Deterministic Output
 
